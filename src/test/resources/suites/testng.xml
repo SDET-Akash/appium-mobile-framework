@@ -1,0 +1,9 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<!--
+    Master TestNG suite. Empty by design — this is project scaffolding only.
+    <test> entries referencing actual test classes will be added once the
+    driver layer and tests are implemented in a later iteration.
+-->
+<suite name="Mobile Automation Suite" verbose="1">
+
+</suite>

@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.automation</groupId>
+    <artifactId>appium-mobile-framework</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+
+    <name>Appium Mobile Automation Framework</name>
+    <description>
+        Production-grade cross-platform (Android/iOS) mobile automation framework
+        built on Appium 2.x, Selenium 4 and TestNG.
+    </description>
+
+    <properties>
+        <!-- Build / encoding -->
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <maven.compiler.release>17</maven.compiler.release>
+
+        <!-- Dependency versions -->
+        <appium.java.client.version>9.4.0</appium.java.client.version>
+        <selenium.version>4.27.0</selenium.version>
+        <testng.version>7.10.2</testng.version>
+        <log4j.version>2.24.3</log4j.version>
+        <allure.version>2.29.1</allure.version>
+        <aspectj.version>1.9.22.1</aspectj.version>
+        <extentreports.version>5.1.2</extentreports.version>
+
+        <!-- Plugin versions -->
+        <maven.compiler.plugin.version>3.13.0</maven.compiler.plugin.version>
+        <maven.surefire.plugin.version>3.5.2</maven.surefire.plugin.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- Aligns every Allure artifact (allure-testng and its transitive
+                 allure-java modules) to a single, consistent version. -->
+            <dependency>
+                <groupId>io.qameta.allure</groupId>
+                <artifactId>allure-bom</artifactId>
+                <version>${allure.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+
+        <!-- ============================================================
+             CORE DRIVER LAYER
+             ============================================================ -->
+
+        <!-- Appium Java Client: drives Android/iOS apps through the Appium
+             2.x server (UiAutomator2 / XCUITest). Transitively brings the
+             Selenium 4 remote-driver stack (AppiumDriver extends RemoteWebDriver). -->
+        <dependency>
+            <groupId>io.appium</groupId>
+            <artifactId>java-client</artifactId>
+            <version>${appium.java.client.version}</version>
+        </dependency>
+
+        <!-- Selenium Java: pinned explicitly (rather than left to transitive
+             resolution) so the WebDriver/Selenium API version is fixed and
+             predictable, and to prevent silent version drift if java-client's
+             own transitive Selenium version changes across releases. -->
+        <dependency>
+            <groupId>org.seleniumhq.selenium</groupId>
+            <artifactId>selenium-java</artifactId>
+            <version>${selenium.version}</version>
+        </dependency>
+
+        <!-- ============================================================
+             TEST EXECUTION
+             ============================================================ -->
+
+        <!-- TestNG: test runner providing annotations, assertions, suite
+             XML execution, parallelism, data providers and listeners. -->
+        <dependency>
+            <groupId>org.testng</groupId>
+            <artifactId>testng</artifactId>
+            <version>${testng.version}</version>
+        </dependency>
+
+        <!-- ============================================================
+             LOGGING
+             ============================================================ -->
+
+        <!-- Log4j2 API/Core: framework-wide structured logging (console + file). -->
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-api</artifactId>
+            <version>${log4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-core</artifactId>
+            <version>${log4j.version}</version>
+        </dependency>
+
+        <!-- Routes SLF4J calls (used internally by Selenium/Appium client
+             libraries) into the same Log4j2 pipeline, so all logs -
+             framework and library - land in one consistent output. -->
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-slf4j2-impl</artifactId>
+            <version>${log4j.version}</version>
+        </dependency>
+
+        <!-- ============================================================
+             REPORTING
+             ============================================================ -->
+
+        <!-- Allure TestNG adapter: generates step-level, screenshot-ready
+             Allure reports from TestNG execution results. -->
+        <dependency>
+            <groupId>io.qameta.allure</groupId>
+            <artifactId>allure-testng</artifactId>
+        </dependency>
+
+        <!-- AspectJ Weaver: required runtime agent for Allure's @Step/@Attachment
+             annotation processing (woven in via the Surefire argLine below). -->
+        <dependency>
+            <groupId>org.aspectj</groupId>
+            <artifactId>aspectjweaver</artifactId>
+            <version>${aspectj.version}</version>
+        </dependency>
+
+        <!-- ExtentReports: standalone HTML execution report/dashboard,
+             used alongside Allure for a human-friendly local report. -->
+        <dependency>
+            <groupId>com.aventstack</groupId>
+            <artifactId>extentreports</artifactId>
+            <version>${extentreports.version}</version>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <finalName>appium-mobile-framework</finalName>
+        <plugins>
+
+            <!-- Compiles the project against Java 17. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>${maven.compiler.plugin.version}</version>
+                <configuration>
+                    <release>17</release>
+                </configuration>
+            </plugin>
+
+            <!-- Executes the TestNG suite and weaves AspectJ at runtime so
+                 Allure step/attachment annotations are captured. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>${maven.surefire.plugin.version}</version>
+                <configuration>
+                    <suiteXmlFiles>
+                        <suiteXmlFile>src/test/resources/suites/testng.xml</suiteXmlFile>
+                    </suiteXmlFiles>
+                    <argLine>
+                        -javaagent:"${settings.localRepository}/org/aspectj/aspectjweaver/${aspectj.version}/aspectjweaver-${aspectj.version}.jar"
+                    </argLine>
+                </configuration>
+            </plugin>
+
+        </plugins>
+    </build>
+
+</project>
