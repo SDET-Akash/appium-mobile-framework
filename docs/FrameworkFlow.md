@@ -1,12 +1,45 @@
 # Framework Flow
 
-> Status: planned design — describes how the layers are intended to
-> connect once implemented. Nothing described here is wired up yet; see
+> Status: the call graph below is the target design. Only the Driver
+> Layer portion of it is actually wired up and verified today — see the
+> status breakdown immediately below, and
 > [Architecture.md](Architecture.md) for the current package-level state.
 
 This document describes the *structural* flow — which layer calls which
 — as opposed to [ExecutionFlow.md](ExecutionFlow.md), which describes the
 runtime sequence of a single test run.
+
+## Build Status
+
+**IMPLEMENTED:**
+- Project scaffolding (package structure, build config)
+- Android Driver Layer (`DriverFactory`, `AndroidDriverFactory`)
+- `DriverManager` (`ThreadLocal<AndroidDriver>`, try/finally cleanup)
+- Driver Smoke Test (`DriverSmokeTest`) — verified against a real Appium
+  session on `emulator-5554`
+- Environment property files (`qa.properties`, `stag.properties`,
+  `prod.properties`)
+
+**NEXT:**
+- `Environment` enum
+- `ConfigReader`
+- `ConfigManager`
+- `CapabilityBuilder`
+- Configuration integration (wiring the above into the Driver Layer,
+  replacing `DriverSmokeTest`'s hardcoded values)
+
+**PLANNED:**
+- `BaseTest`
+- `BasePage`
+- `LoginPage`
+- `LoginTest`
+- Utilities (`wait`, `gesture`, `screenshot`, `device`, `file`, `date`)
+- Reporting improvements (`ExtentReportManager`, `AllureManager`)
+- CI/CD
+
+Nothing in the NEXT or PLANNED lists is implemented yet — the call graph
+below describes their intended relationships once built, not current
+behavior.
 
 ## Layer Call Graph
 

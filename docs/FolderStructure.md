@@ -1,8 +1,9 @@
 # Folder Structure
 
-> Status: structure frozen as of this document's last update. Every
-> package below exists in the repo today; classes marked "(empty)" have
-> JavaDoc only, no logic yet.
+> Status: reflects the actual repository contents as of this document's
+> last update. Classes marked "(empty)" have JavaDoc only, no logic yet;
+> classes marked "(implemented)" contain real logic and have been
+> compiled/run.
 
 ```
 appium-mobile-framework/
@@ -17,25 +18,28 @@ appium-mobile-framework/
 ├── logs/                          Runtime log output (gitignored)
 └── src/
     ├── main/java/com/automation/mobile/
-    │   ├── config/                 Configuration resolution
+    │   ├── base/                    Test/page base classes
+    │   │   ├── BaseTest.java            (empty) — planned suite/method setup-teardown
+    │   │   └── BasePage.java            (empty) — planned low-level driver interaction owner
+    │   ├── config/                 Configuration resolution — NOT YET IMPLEMENTED
     │   │   ├── ConfigReader.java        (empty) — raw value source contract
     │   │   ├── ConfigManager.java       (empty) — typed config access point
     │   │   ├── CapabilityBuilder.java   (empty) — Appium options assembly
     │   │   └── Environment.java         (empty) — target environment enum
-    │   ├── driver/                 Driver lifecycle
-    │   │   ├── DriverFactory.java           (empty) — factory contract
-    │   │   ├── DriverManager.java           (empty) — session lifecycle owner
-    │   │   ├── AndroidDriverFactory.java     (empty) — UiAutomator2 sessions
-    │   │   └── IOSDriverFactory.java         (empty) — XCUITest sessions (future)
+    │   ├── driver/                 Driver lifecycle — IMPLEMENTED (Android)
+    │   │   ├── DriverFactory.java           (implemented) — factory contract
+    │   │   ├── DriverManager.java           (implemented) — ThreadLocal<AndroidDriver> lifecycle owner
+    │   │   ├── AndroidDriverFactory.java     (implemented) — builds UiAutomator2Options + AndroidDriver
+    │   │   └── IOSDriverFactory.java         (stub) — throws UnsupportedOperationException, no iOS logic
     │   ├── pages/                  Page Object Model
     │   │   ├── android/                 (empty — Android screens)
     │   │   ├── ios/                      (empty — iOS screens, future)
     │   │   └── common/                   (empty — shared screen contracts)
     │   ├── exceptions/              Custom exception hierarchy
-    │   │   ├── FrameworkException.java              (empty) — root exception
-    │   │   ├── DriverInitializationException.java   (empty)
-    │   │   ├── ConfigurationException.java          (empty)
-    │   │   └── PageOperationException.java          (empty)
+    │   │   ├── FrameworkException.java              (implemented) — root exception, message/cause constructors
+    │   │   ├── DriverInitializationException.java   (implemented) — used by the Driver Layer
+    │   │   ├── ConfigurationException.java          (implemented) — message/cause constructors, unused so far
+    │   │   └── PageOperationException.java          (implemented) — message/cause constructors, unused so far
     │   ├── listeners/               TestNG hooks
     │   │   ├── TestListener.java            (empty) — ITestListener
     │   │   ├── RetryAnalyzer.java           (empty) — IRetryAnalyzer
@@ -57,16 +61,31 @@ appium-mobile-framework/
     │   └── enums/                    (empty) — shared enums
     └── test/
         ├── java/com/automation/mobile/
-        │   ├── base/                     (empty) — BaseTest
         │   └── tests/
-        │       ├── android/              (empty)
+        │       ├── android/
+        │       │   └── DriverSmokeTest.java   (implemented, temporary) — verifies the
+        │       │       Driver Layer against a real Appium session; hardcodes
+        │       │       Appium URL, device name and APK path since the
+        │       │       Configuration Layer doesn't exist yet
         │       └── ios/                  (empty)
         └── resources/
-            ├── config/config.properties   Placeholder keys only (environment, platform)
+            ├── config/
+            │   ├── qa.properties        deviceName/appiumServerUrl populated; appPath blank
+            │   ├── stag.properties      deviceName/appiumServerUrl populated; appPath blank
+            │   └── prod.properties      deviceName/appiumServerUrl populated; appPath blank
             ├── testdata/                   (empty)
-            ├── suites/testng.xml           Empty <suite> skeleton
+            ├── suites/testng.xml           <test> entry running DriverSmokeTest
             └── log4j2.xml                  Console + rolling-file logging config
 ```
+
+`appPath` is blank in all three environment property files because the
+only APK currently available (`app-dev-debug.apk`) has not been
+confirmed to belong to a specific one of QA/STAG/PROD — its filename is
+not treated as proof. See [Architecture.md](Architecture.md#configuration-layer--next-not-yet-implemented).
+
+`base/` was moved from `src/test/java` to `src/main/java` so that both
+tests (`BaseTest`) and future page objects (`BasePage`) can depend on it
+from a shared, non-test-scoped location.
 
 ## Naming Conventions
 

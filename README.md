@@ -53,7 +53,10 @@ appium-mobile-framework/
 │       │       ├── android/
 │       │       └── ios/
 │       └── resources/
-│           ├── config/                    # config.properties per environment
+│           ├── config/                    # Per-environment configuration
+│           │   ├── qa.properties          # QA environment values
+│           │   ├── stag.properties        # Staging environment values
+│           │   └── prod.properties        # Production environment values
 │           ├── testdata/                  # JSON/Excel/CSV test data
 │           ├── suites/                    # TestNG XML suite files
 │           └── log4j2.xml                 # Logging configuration

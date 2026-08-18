@@ -1,8 +1,10 @@
 # Architecture
 
-> Status: structure frozen, no logic implemented yet. This document
-> describes the intended architecture the scaffolded packages are built
-> for, not code that currently exists.
+> Status: the Android Driver Layer is implemented and verified against a
+> real Appium session (see [Driver Layer — Implemented](#driver-layer--implemented)
+> below). Everything else described in this document beyond that section
+> — Configuration Java classes, BaseTest, BasePage, Pages, reporting,
+> listeners — is still the target design, not code that currently exists.
 
 ## Goals
 
@@ -60,15 +62,18 @@
 │     waits, gestures) on behalf of Page Objects.               │
 │   - Depend on: driver/ (via DriverManager), utils/            │
 ├───────────────────────────────────────────────────────────┤
-│ Driver (driver/)                                            │
+│ Driver (driver/) — IMPLEMENTED                               │
 │   - DriverManager (lifecycle/thread-local ownership),        │
 │     delegating creation to DriverFactory (contract).         │
-│   - Depend on: config/ (capabilities), exceptions/           │
+│   - Depend on: config/ (capabilities, once it exists),        │
+│     exceptions/                                               │
 ├───────────────────────────────────────────────────────────┤
-│ DriverFactory implementations (driver/)                      │
-│   - AndroidDriverFactory / IOSDriverFactory.                 │
+│ DriverFactory implementations (driver/) — Android IMPLEMENTED│
+│   - AndroidDriverFactory (implemented) /                     │
+│     IOSDriverFactory (stub only, throws Unsupported-          │
+│     OperationException).                                     │
 ├───────────────────────────────────────────────────────────┤
-│ Config (config/)                                             │
+│ Config (config/) — NOT YET IMPLEMENTED (empty declarations)  │
 │   - ConfigReader (source) → ConfigManager (typed access) →   │
 │     CapabilityBuilder (Appium options) → Environment (enum).  │
 ├───────────────────────────────────────────────────────────┤
@@ -88,6 +93,68 @@ interaction is routed through `BasePage` — this is the one rule that
 keeps the Pages layer decoupled from driver lifecycle concerns and is
 what makes swapping/mocking the driver layer possible without touching
 any page object.
+
+## Driver Layer — Implemented
+
+The Android slice of the driver layer is implemented and has created a
+real Appium session against `emulator-5554` (see
+[ExecutionFlow.md](ExecutionFlow.md) for the verified run):
+
+```
+     DriverFactory  (contract)
+           │  implemented by
+           ▼
+ AndroidDriverFactory
+           │  builds UiAutomator2Options, then constructs
+           ▼
+     AndroidDriver
+           │  stored/retrieved via
+           ▼
+     DriverManager
+```
+
+- **`DriverFactory`** — the platform-neutral contract:
+  `createDriver(URL appiumServerUrl, Map<String, Object> capabilities)`.
+- **`AndroidDriverFactory`** — fixes only `platformName=Android` and
+  `automationName=UiAutomator2` (that's what makes it *this* factory);
+  every other capability (`deviceName`, `app`, etc.) is applied from the
+  caller-supplied map, never hardcoded. Wraps creation failures in
+  `DriverInitializationException` with the original cause preserved.
+- **`DriverManager`** — holds the active `AndroidDriver` per thread via a
+  static `ThreadLocal<AndroidDriver>` (no public static driver field).
+  `getDriver()` fails clearly if called before `setDriver()`.
+  `removeDriver()` quits the session and clears the thread-local
+  reference inside a `try`/`finally`, so the reference is always removed
+  even if `driver.quit()` throws.
+- **`IOSDriverFactory`** — exists only as a stub implementing
+  `DriverFactory` (throws `UnsupportedOperationException`); no iOS logic
+  has been implemented.
+
+## Configuration Layer — Next (Not Yet Implemented)
+
+`ConfigReader`, `ConfigManager`, `CapabilityBuilder`, and `Environment`
+are still empty declarations (JavaDoc only) — no logic exists yet. This
+is the next layer to be built.
+
+Its job is to **supply data into the Driver Layer**, not to sit as
+another step after it — `AndroidDriverFactory.createDriver(...)` already
+accepts a server URL and a capability map from its caller; the
+Configuration Layer's whole purpose is to become that caller, resolving
+per-environment values instead of a test hardcoding them. Concretely, it
+will supply:
+
+- Appium server URL
+- device name
+- APK path
+- platform
+- automation name
+
+from the environment property files that already exist
+(`src/test/resources/config/qa.properties`, `stag.properties`,
+`prod.properties`) — see [FolderStructure.md](FolderStructure.md). Until
+`ConfigManager`/`CapabilityBuilder` exist, the temporary
+`DriverSmokeTest` supplies these same values directly (see
+[ExecutionFlow.md](ExecutionFlow.md)).
 
 ## Design Principles Applied
 
@@ -135,6 +202,12 @@ framework:
 - Never hardcode APK paths.
 - Never hardcode environment values.
 - Never hardcode credentials.
+
+> Temporary, documented exception: `DriverSmokeTest` currently hardcodes
+> the Appium server URL, device name, and APK path, because the
+> Configuration Layer above doesn't exist yet. It is explicitly a
+> throwaway verification test, not a pattern to follow — see
+> [ExecutionFlow.md](ExecutionFlow.md).
 
 ## Locator Strategy
 
