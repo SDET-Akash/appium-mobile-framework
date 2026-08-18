@@ -9,4 +9,12 @@ package com.automation.mobile.exceptions;
  * Implementation intentionally deferred to a later iteration.
  */
 public class ConfigurationException extends FrameworkException {
+
+    public ConfigurationException(String message) {
+        super(message);
+    }
+
+    public ConfigurationException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }

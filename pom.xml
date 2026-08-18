@@ -47,6 +47,28 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+
+            <!-- Pins java-client's transitive Selenium version range
+                 ([4.26.0,5.0)) down to the same ${selenium.version} used by
+                 our direct selenium-java dependency. Without this, Maven's
+                 range resolution picks the newest matching release (4.47.0),
+                 which removed org.openqa.selenium.ContextAware — a type
+                 java-client 9.4.0's AndroidDriver still depends on. -->
+            <dependency>
+                <groupId>org.seleniumhq.selenium</groupId>
+                <artifactId>selenium-api</artifactId>
+                <version>${selenium.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.seleniumhq.selenium</groupId>
+                <artifactId>selenium-remote-driver</artifactId>
+                <version>${selenium.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.seleniumhq.selenium</groupId>
+                <artifactId>selenium-support</artifactId>
+                <version>${selenium.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 

@@ -5,8 +5,14 @@ package com.automation.mobile.exceptions;
  * (e.g. Appium server unreachable, invalid capabilities, session
  * creation timeout) — raised by {@code DriverFactory}/{@code DriverManager}
  * implementations.
- * <p>
- * Implementation intentionally deferred to a later iteration.
  */
 public class DriverInitializationException extends FrameworkException {
+
+    public DriverInitializationException(String message) {
+        super(message);
+    }
+
+    public DriverInitializationException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }

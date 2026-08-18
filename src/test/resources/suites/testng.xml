@@ -1,9 +1,16 @@
 <!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
 <!--
-    Master TestNG suite. Empty by design — this is project scaffolding only.
-    <test> entries referencing actual test classes will be added once the
-    driver layer and tests are implemented in a later iteration.
+    Master TestNG suite. <test> entries referencing actual test classes
+    will be added here as they are implemented.
 -->
 <suite name="Mobile Automation Suite" verbose="1">
+
+    <!-- Temporary Driver Layer verification test — remove once real
+         tests exist on top of BaseTest/BasePage. -->
+    <test name="Driver Smoke Test">
+        <classes>
+            <class name="com.automation.mobile.tests.android.DriverSmokeTest"/>
+        </classes>
+    </test>
 
 </suite>

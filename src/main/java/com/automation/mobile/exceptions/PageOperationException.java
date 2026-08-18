@@ -9,4 +9,12 @@ package com.automation.mobile.exceptions;
  * Implementation intentionally deferred to a later iteration.
  */
 public class PageOperationException extends FrameworkException {
+
+    public PageOperationException(String message) {
+        super(message);
+    }
+
+    public PageOperationException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }
