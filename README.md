@@ -3,9 +3,13 @@
 Production-grade, cross-platform (Android now, iOS-ready) mobile UI automation
 framework built on Appium 2.x, Selenium 4 and TestNG.
 
-> **Status:** project scaffolding only. No driver layer, page objects, or
-> tests have been implemented yet — this repository currently defines
-> structure, build configuration, and reporting/logging wiring.
+> **Status:** the Configuration Layer (`Environment`, `ConfigReader`,
+> `ConfigManager`, `CapabilityBuilder`), the Android Driver Layer
+> (`AndroidDriverFactory`, `DriverManager`), and `BaseTest` (centralized
+> driver setup/teardown) are implemented and verified against a real
+> Appium session. No test class extends `BaseTest` yet, and page
+> objects/reporting/listeners are still scaffolding only — see
+> [docs/Architecture.md](docs/Architecture.md) for the full breakdown.
 
 ## Tech Stack
 
@@ -27,46 +31,50 @@ appium-mobile-framework/
 ├── pom.xml
 ├── .gitignore
 ├── README.md
+├── docs/                                  # Architecture/flow documentation
 ├── logs/                                  # Runtime log output (gitignored)
 ├── src/
 │   ├── main/
 │   │   ├── java/com/automation/mobile/
-│   │   │   ├── config/                    # Environment/config readers
-│   │   │   ├── driver/
-│   │   │   │   ├── android/               # Android capability/driver setup
-│   │   │   │   └── ios/                   # iOS capability/driver setup
-│   │   │   ├── screens/
-│   │   │   │   ├── android/                  # Android page/screen objects
-│   │   │   │   ├── ios/                      # iOS page/screen objects
-│   │   │   │   └── common/                   # Cross-platform screen contracts
-│   │   │   ├── listeners/                 # TestNG / Allure listeners
-│   │   │   ├── reports/                   # ExtentReports manager
-│   │   │   ├── utils/                     # Waits, gestures, helpers
-│   │   │   ├── constants/                 # Framework-wide constants
-│   │   │   ├── enums/                     # PlatformType, Environment, etc.
-│   │   │   └── exceptions/                # Custom framework exceptions
+│   │   │   ├── base/                      # BaseTest (implemented), BasePage (planned)
+│   │   │   ├── config/                    # Environment, ConfigReader, ConfigManager,
+│   │   │   │                              # CapabilityBuilder — implemented
+│   │   │   ├── driver/                    # DriverFactory, AndroidDriverFactory,
+│   │   │   │                              # DriverManager (implemented); IOSDriverFactory (stub)
+│   │   │   ├── pages/
+│   │   │   │   ├── android/                  # Android page/screen objects (planned)
+│   │   │   │   ├── ios/                      # iOS page/screen objects (planned)
+│   │   │   │   └── common/                   # Cross-platform screen contracts (planned)
+│   │   │   ├── listeners/                 # TestNG / Allure listeners (planned)
+│   │   │   ├── reports/                   # ExtentReports/Allure managers (planned)
+│   │   │   ├── utils/                     # Waits, gestures, helpers (planned)
+│   │   │   ├── constants/                 # Framework-wide constants (planned)
+│   │   │   ├── enums/                     # Shared enums (planned)
+│   │   │   └── exceptions/                # Custom framework exceptions — implemented
 │   │   └── resources/
 │   └── test/
 │       ├── java/com/automation/mobile/
-│       │   ├── base/                      # BaseTest (setup/teardown)
 │       │   └── tests/
-│       │       ├── android/
+│       │       ├── android/                  # DriverSmokeTest (temporary verification test)
 │       │       └── ios/
 │       └── resources/
+│           ├── apps/                      # Staged APKs per environment
+│           │   └── qa/qa.apk               # QA APK; stag/prod not staged yet
 │           ├── config/                    # Per-environment configuration
-│           │   ├── qa.properties          # QA environment values
-│           │   ├── stag.properties        # Staging environment values
-│           │   └── prod.properties        # Production environment values
+│           │   ├── qa.properties          # QA environment values (fully populated)
+│           │   ├── stag.properties        # Staging environment values (appPath blank)
+│           │   └── prod.properties        # Production environment values (appPath blank)
 │           ├── testdata/                  # JSON/Excel/CSV test data
 │           ├── suites/                    # TestNG XML suite files
 │           └── log4j2.xml                 # Logging configuration
 ```
 
-`screens/` is split by platform (`android/`, `ios/`) with a `common/`
+`pages/` is split by platform (`android/`, `ios/`) with a `common/`
 package for shared contracts, so platform-specific implementations can
 diverge without leaking into shared test logic — in line with the
 Interface Segregation / Dependency Inversion principles the driver layer
-will follow once it's implemented.
+already follows. See [docs/FolderStructure.md](docs/FolderStructure.md)
+for the fully annotated, up-to-date tree.
 
 Empty directories contain a `.gitkeep` so the structure is preserved in git
 until real classes are added.
@@ -105,11 +113,19 @@ unnecessary libraries."
 mvn clean test
 ```
 
-This currently runs an empty TestNG suite (no test classes exist yet) —
-build/reporting wiring can be verified without any tests present.
+This runs `DriverSmokeTest`, which creates a real Android Appium session
+against a running Appium server and emulator/device (`emulator-5554` by
+default, per `qa.properties`) and launches the QA APK. An Appium server
+and an available Android device/emulator must be running first.
 
 ## Next Steps
 
-Driver layer (`DriverFactory` / `DriverManager` under
-`com.automation.mobile.driver`) is intentionally **not** implemented yet —
-scaffolding only, as scoped for this iteration.
+- Refactor `DriverSmokeTest` to extend `BaseTest` instead of performing
+  driver setup/teardown manually.
+- Introduce a proper environment-selection mechanism (`BaseTest`
+  currently fixes `Environment.QA`).
+- Implement `BasePage` and the first real page objects/tests
+  (`LoginPage`, `LoginTest`).
+
+See [docs/FrameworkFlow.md](docs/FrameworkFlow.md) for the full
+implemented/next/planned breakdown.

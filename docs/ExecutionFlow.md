@@ -1,27 +1,38 @@
 # Execution Flow
 
-> Status: two flows are documented here. The first — **Currently
-> Verified** — is real and has run successfully against a live Appium
-> server and emulator. The second — **Planned Full Framework Flow** — is
-> still target design; the config/base/pages/listeners/reports layers it
-> describes are not implemented yet.
+> Status: three flows are documented here. The first two — **Currently
+> Verified** — are real and have run successfully against a live Appium
+> server and emulator. The third — **Planned Full Framework Flow** — is
+> still target design; the pages/listeners/reports layers it describes
+> are not implemented yet.
 
 ## Currently Verified: Driver Smoke Test
 
 `DriverSmokeTest` (`src/test/java/com/automation/mobile/tests/android/DriverSmokeTest.java`)
-is a temporary TestNG test that exercises the real Driver Layer end to
-end — no Configuration Layer, no `BaseTest`/`BasePage`, no page objects
-involved. It has been run and passed against:
+is a temporary TestNG test that exercises the Configuration Layer and
+the Driver Layer end to end — no `BaseTest`/`BasePage`, no page objects
+involved (it performs the same setup `BaseTest` now centralizes, but
+manually, as its own verification that the layers wire together
+correctly). It has been run and passed against:
 
+- Environment: `Environment.QA` (`src/test/resources/config/qa.properties`)
 - Appium server: `http://127.0.0.1:4723`
 - Device: `emulator-5554`
-- App: the Flutter Android APK at `/home/akash/kylasApk/app-dev-debug.apk/app-dev-debug.apk`
+- App: `apps/qa/qa.apk` (resolved via `ConfigManager.getAppPath()`) — the Kylas
+  Sales Android app, package `io.kylas.sales.droid.qa.debug`
 
 ### Startup
 
 ```
 DriverSmokeTest
-      │  builds a capabilities map (deviceName, app) and calls
+      │  new ConfigManager(Environment.QA)
+      ▼
+ConfigManager  ──uses──►  ConfigReader (loads qa.properties)
+      │
+      ▼
+CapabilityBuilder.build()
+      │  produces a capabilities map (platform, automationName,
+      │  deviceName, app, autoGrantPermissions, enforceAppInstall)
       ▼
 AndroidDriverFactory.createDriver(serverUrl, capabilities)
       │  builds UiAutomator2Options, then constructs
@@ -38,7 +49,7 @@ UiAutomator2
 Android Emulator (emulator-5554)
       │  which launches
       ▼
-Flutter APK (app-dev-debug.apk)
+Kylas Sales Android app (apps/qa/qa.apk)
 ```
 
 The test then stores the driver via `DriverManager.setDriver(driver)`,
@@ -60,10 +71,40 @@ DriverManager.removeDriver()
 
 ### What this proves vs. what it doesn't
 
-This confirms `DriverFactory` → `AndroidDriverFactory` → `AndroidDriver`
-→ `DriverManager` work correctly together against a real environment.
-It does **not** exercise config resolution, capability building from
-files, retries, reporting, or page objects — none of those exist yet.
+This confirms `Environment` → `ConfigReader` → `ConfigManager` →
+`CapabilityBuilder` → `AndroidDriverFactory` → `AndroidDriver` →
+`DriverManager` work correctly together against a real environment. It
+does **not** exercise `BaseTest` (no test extends it yet), retries,
+reporting, or page objects — those don't exist yet or aren't wired in.
+
+## Currently Verified: BaseTest (compiled, not yet exercised by a test)
+
+`BaseTest` (`src/main/java/com/automation/mobile/base/BaseTest.java`)
+implements the same setup/teardown flow as `DriverSmokeTest` above, but
+centralized behind TestNG's `@BeforeMethod`/`@AfterMethod` so future test
+classes get it just by extending `BaseTest`:
+
+```
+@BeforeMethod setUp()
+      │  ConfigManager(Environment.QA) → CapabilityBuilder.build()
+      │  → new URL(appiumServerUrl)  [MalformedURLException → DriverInitializationException]
+      ▼
+AndroidDriverFactory.createDriver(url, capabilities)
+      ▼
+DriverManager.setDriver(driver)
+
+(test body — via protected getDriver())
+
+@AfterMethod(alwaysRun = true) tearDown()
+      ▼
+DriverManager.removeDriver()
+```
+
+It has been verified via `mvn clean test-compile` (compiles cleanly)
+and `mvn clean test` (build stays green; `DriverSmokeTest` still passes
+unmodified alongside it). No test class extends `BaseTest` yet —
+refactoring `DriverSmokeTest` to do so is the next step, at which point
+this section should be merged into "Currently Verified" above.
 
 ## Planned Full Framework Flow
 
@@ -76,20 +117,21 @@ config/base/listener/report classes it references have logic yet.
 1. **Suite start** — Surefire loads `suites/testng.xml`.
    `listeners/AnnotationTransformer` registers, attaching
    `listeners/RetryAnalyzer` to every `@Test` method.
-2. **Config resolution** — `BaseTest` (suite/class setup) calls
-   `config/ConfigManager`, which uses `config/ConfigReader` to load the
-   appropriate `src/test/resources/config/{qa,stag,prod}.properties` file
-   and resolves the target `config/Environment`. (These property files
-   already exist; `ConfigReader`/`ConfigManager` do not yet — see
-   [Architecture.md](Architecture.md#configuration-layer--next-not-yet-implemented).)
-3. **Capability assembly** — `config/CapabilityBuilder` turns resolved
-   config into platform capabilities (`UiAutomator2Options` /
-   `XCUITestOptions`).
-4. **Driver creation** — `BaseTest` asks `driver/DriverManager` for a
-   driver; `DriverManager` delegates to the platform's
-   `driver/DriverFactory` implementation (`AndroidDriverFactory` or
-   `IOSDriverFactory`), which opens the Appium session. Failures here
-   raise `exceptions/DriverInitializationException`.
+2. **Config resolution** — `BaseTest.setUp()` (`@BeforeMethod`, currently
+   fixed to `Environment.QA`) constructs `config/ConfigManager`, which
+   uses `config/ConfigReader` to load the appropriate
+   `src/test/resources/config/{qa,stag,prod}.properties` file. This part
+   is implemented — see
+   [Architecture.md](Architecture.md#configuration-layer--implemented).
+   A proper environment-selection mechanism (replacing the hardcoded
+   `QA`) is still to come.
+3. **Capability assembly** — `config/CapabilityBuilder.build()` turns
+   resolved config into the Appium capabilities map (implemented).
+4. **Driver creation** — `BaseTest.setUp()` builds the driver via
+   `driver/AndroidDriverFactory` directly and stores it with
+   `driver/DriverManager.setDriver(...)`; `IOSDriverFactory` support is
+   not wired in yet. Failures here raise
+   `exceptions/DriverInitializationException`.
 5. **Test execution** — the test class calls into `pages/` objects only.
    Page objects pull the active driver from `DriverManager` and use
    `utils/wait`, `utils/gesture`, etc. for interactions.

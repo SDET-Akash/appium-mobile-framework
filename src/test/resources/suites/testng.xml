@@ -10,6 +10,8 @@
     <test name="Driver Smoke Test">
         <classes>
             <class name="com.automation.mobile.tests.android.DriverSmokeTest"/>
+            <class name="com.automation.mobile.tests.android.LoginTest"/>
+            <class name="com.automation.mobile.tests.android.DashboardTest"/>
         </classes>
     </test>
 

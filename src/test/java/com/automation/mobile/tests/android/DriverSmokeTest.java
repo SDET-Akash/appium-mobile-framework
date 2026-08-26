@@ -1,5 +1,9 @@
 package com.automation.mobile.tests.android;
 
+import com.automation.mobile.base.BaseTest;
+import com.automation.mobile.config.CapabilityBuilder;
+import com.automation.mobile.config.ConfigManager;
+import com.automation.mobile.config.Environment;
 import com.automation.mobile.driver.AndroidDriverFactory;
 import com.automation.mobile.driver.DriverManager;
 import io.appium.java_client.android.AndroidDriver;
@@ -14,34 +18,29 @@ import java.net.URL;
 import java.util.Map;
 
 /**
- * Temporary smoke test verifying that the Driver Layer
- * (AndroidDriverFactory + DriverManager) can create and manage a real
- * Android Appium session end to end.
+ * Temporary smoke test verifying that the Configuration Layer
+ * (ConfigManager + CapabilityBuilder) and the Driver Layer
+ * (AndroidDriverFactory + DriverManager) work together end to end to
+ * create a real Android Appium session.
  * <p>
- * This is NOT a framework test class — it exists only to validate the
- * Driver Layer in isolation. Appium server URL, device name and APK path
- * are hardcoded here deliberately, since the Configuration Layer does
- * not exist yet. To be removed/replaced once real tests are built on
- * top of BaseTest/BasePage.
+ * This is NOT a framework test class — it exists only to validate that
+ * the layers are wired together correctly. To be removed/replaced once
+ * real tests are built on top of BaseTest/BasePage.
  */
-public class DriverSmokeTest {
+public class DriverSmokeTest extends BaseTest {
 
     private static final Logger LOGGER = LogManager.getLogger(DriverSmokeTest.class);
 
-    private static final String APPIUM_SERVER_URL = "http://127.0.0.1:4723";
-    private static final String DEVICE_NAME = "emulator-5554";
-    private static final String APP_PATH = "/home/akash/kylasApk/app-dev-debug.apk/app-dev-debug.apk";
-
     @Test
     public void verifyAndroidDriverSessionIsCreated() throws MalformedURLException {
-        Map<String, Object> capabilities = Map.of(
-                "deviceName", DEVICE_NAME,
-                "app", APP_PATH
-        );
+//        ConfigManager configManager = new ConfigManager(Environment.QA);
+//        CapabilityBuilder capabilityBuilder = new CapabilityBuilder(configManager);
+//        Map<String, Object> capabilities = capabilityBuilder.build();
+//        URL appiumServerUrl = new URL(configManager.getAppiumServerUrl());
 
-        AndroidDriverFactory androidDriverFactory = new AndroidDriverFactory();
-        AndroidDriver driver = androidDriverFactory.createDriver(new URL(APPIUM_SERVER_URL), capabilities);
-        DriverManager.setDriver(driver);
+//        AndroidDriverFactory androidDriverFactory = new AndroidDriverFactory();
+//        AndroidDriver driver = androidDriverFactory.createDriver(appiumServerUrl, capabilities);
+//        DriverManager.setDriver(driver);
 
         AndroidDriver activeDriver = DriverManager.getDriver();
         Assert.assertNotNull(activeDriver, "Driver returned by DriverManager must not be null");
@@ -52,10 +51,11 @@ public class DriverSmokeTest {
         LOGGER.info("Current activity: {}", activeDriver.currentActivity());
 
         Assert.assertNotNull(activeDriver.getCurrentPackage(), "App does not appear to have launched — current package is null");
+        Assert.assertFalse(activeDriver.getCurrentPackage().trim().isEmpty(), "App does not appear to have launched — current package is blank");
     }
 
-    @AfterMethod(alwaysRun = true)
-    public void tearDown() {
-        DriverManager.removeDriver();
-    }
+//    @AfterMethod(alwaysRun = true)
+//    public void tearDown() {
+//        DriverManager.removeDriver();
+//    }
 }

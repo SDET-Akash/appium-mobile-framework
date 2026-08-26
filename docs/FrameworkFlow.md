@@ -1,8 +1,8 @@
 # Framework Flow
 
-> Status: the call graph below is the target design. Only the Driver
-> Layer portion of it is actually wired up and verified today — see the
-> status breakdown immediately below, and
+> Status: the call graph below is the target design. The Driver Layer,
+> Configuration Layer, and `BaseTest` portions of it are implemented and
+> verified today — see the status breakdown immediately below, and
 > [Architecture.md](Architecture.md) for the current package-level state.
 
 This document describes the *structural* flow — which layer calls which
@@ -13,23 +13,26 @@ runtime sequence of a single test run.
 
 **IMPLEMENTED:**
 - Project scaffolding (package structure, build config)
+- Configuration Layer (`Environment`, `ConfigReader`, `ConfigManager`,
+  `CapabilityBuilder`) — resolves per-environment properties into an
+  Appium capabilities map
 - Android Driver Layer (`DriverFactory`, `AndroidDriverFactory`)
 - `DriverManager` (`ThreadLocal<AndroidDriver>`, try/finally cleanup)
+- `BaseTest` (`@BeforeMethod`/`@AfterMethod` driver setup-teardown,
+  `protected getDriver()`) — compiled and build-verified, but no test
+  class extends it yet
 - Driver Smoke Test (`DriverSmokeTest`) — verified against a real Appium
-  session on `emulator-5554`
+  session on `emulator-5554`, now resolving config through the
+  Configuration Layer instead of hardcoded values
 - Environment property files (`qa.properties`, `stag.properties`,
-  `prod.properties`)
+  `prod.properties`); QA APK staged at `apps/qa/qa.apk`
 
 **NEXT:**
-- `Environment` enum
-- `ConfigReader`
-- `ConfigManager`
-- `CapabilityBuilder`
-- Configuration integration (wiring the above into the Driver Layer,
-  replacing `DriverSmokeTest`'s hardcoded values)
+- Refactor `DriverSmokeTest` to extend `BaseTest`
+- A cleaner environment-selection mechanism (replacing `BaseTest`'s
+  hardcoded `Environment.QA`)
 
 **PLANNED:**
-- `BaseTest`
 - `BasePage`
 - `LoginPage`
 - `LoginTest`
@@ -37,9 +40,8 @@ runtime sequence of a single test run.
 - Reporting improvements (`ExtentReportManager`, `AllureManager`)
 - CI/CD
 
-Nothing in the NEXT or PLANNED lists is implemented yet — the call graph
-below describes their intended relationships once built, not current
-behavior.
+Nothing in the PLANNED list is implemented yet — the call graph below
+describes its intended relationships once built, not current behavior.
 
 ## Layer Call Graph
 

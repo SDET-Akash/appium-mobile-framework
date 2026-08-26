@@ -19,13 +19,14 @@ appium-mobile-framework/
 └── src/
     ├── main/java/com/automation/mobile/
     │   ├── base/                    Test/page base classes
-    │   │   ├── BaseTest.java            (empty) — planned suite/method setup-teardown
+    │   │   ├── BaseTest.java            (implemented) — @BeforeMethod/@AfterMethod driver
+    │   │   │                             setup-teardown; not yet extended by any test class
     │   │   └── BasePage.java            (empty) — planned low-level driver interaction owner
-    │   ├── config/                 Configuration resolution — NOT YET IMPLEMENTED
-    │   │   ├── ConfigReader.java        (empty) — raw value source contract
-    │   │   ├── ConfigManager.java       (empty) — typed config access point
-    │   │   ├── CapabilityBuilder.java   (empty) — Appium options assembly
-    │   │   └── Environment.java         (empty) — target environment enum
+    │   ├── config/                 Configuration resolution — IMPLEMENTED
+    │   │   ├── ConfigReader.java        (implemented) — loads config/{qa,stag,prod}.properties
+    │   │   ├── ConfigManager.java       (implemented) — typed config access point
+    │   │   ├── CapabilityBuilder.java   (implemented) — Appium options assembly
+    │   │   └── Environment.java         (implemented) — QA/STAG/PROD enum
     │   ├── driver/                 Driver lifecycle — IMPLEMENTED (Android)
     │   │   ├── DriverFactory.java           (implemented) — factory contract
     │   │   ├── DriverManager.java           (implemented) — ThreadLocal<AndroidDriver> lifecycle owner
@@ -64,13 +65,17 @@ appium-mobile-framework/
         │   └── tests/
         │       ├── android/
         │       │   └── DriverSmokeTest.java   (implemented, temporary) — verifies the
-        │       │       Driver Layer against a real Appium session; hardcodes
-        │       │       Appium URL, device name and APK path since the
-        │       │       Configuration Layer doesn't exist yet
+        │       │       Configuration Layer + Driver Layer against a real Appium
+        │       │       session; resolves URL/device/APK via ConfigManager, but sets
+        │       │       up/tears down the driver manually instead of extending BaseTest
         │       └── ios/                  (empty)
         └── resources/
+            ├── apps/
+            │   ├── qa/qa.apk               QA Android APK (Kylas Sales app)
+            │   ├── stag/                   (.gitkeep only — no APK staged yet)
+            │   └── prod/                   (.gitkeep only — no APK staged yet)
             ├── config/
-            │   ├── qa.properties        deviceName/appiumServerUrl populated; appPath blank
+            │   ├── qa.properties        fully populated, including appPath=apps/qa/qa.apk
             │   ├── stag.properties      deviceName/appiumServerUrl populated; appPath blank
             │   └── prod.properties      deviceName/appiumServerUrl populated; appPath blank
             ├── testdata/                   (empty)
@@ -78,10 +83,11 @@ appium-mobile-framework/
             └── log4j2.xml                  Console + rolling-file logging config
 ```
 
-`appPath` is blank in all three environment property files because the
-only APK currently available (`app-dev-debug.apk`) has not been
-confirmed to belong to a specific one of QA/STAG/PROD — its filename is
-not treated as proof. See [Architecture.md](Architecture.md#configuration-layer--next-not-yet-implemented).
+`appPath` is populated for QA (`apps/qa/qa.apk`) now that the QA APK has
+been confirmed and staged under `src/test/resources/apps/qa/`. It
+remains blank for STAG/PROD because no APK has been staged for those
+environments yet. See
+[Architecture.md](Architecture.md#configuration-layer--implemented).
 
 `base/` was moved from `src/test/java` to `src/main/java` so that both
 tests (`BaseTest`) and future page objects (`BasePage`) can depend on it

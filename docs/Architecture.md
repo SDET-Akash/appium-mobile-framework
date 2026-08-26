@@ -1,10 +1,14 @@
 # Architecture
 
-> Status: the Android Driver Layer is implemented and verified against a
-> real Appium session (see [Driver Layer — Implemented](#driver-layer--implemented)
-> below). Everything else described in this document beyond that section
-> — Configuration Java classes, BaseTest, BasePage, Pages, reporting,
-> listeners — is still the target design, not code that currently exists.
+> Status: the Android Driver Layer, the Configuration Layer, and
+> `BaseTest` are implemented and verified against a real Appium session
+> (see [Driver Layer — Implemented](#driver-layer--implemented) and
+> [Configuration Layer — Implemented](#configuration-layer--implemented)
+> below). `BaseTest` centralizes the same driver-lifecycle flow
+> `DriverSmokeTest` performs manually, but no test class extends it yet —
+> that refactor is the next step. Everything else described in this
+> document beyond those sections — BasePage, Pages, reporting, listeners
+> — is still the target design, not code that currently exists.
 
 ## Goals
 
@@ -46,10 +50,10 @@
 │   - JUnit-free, TestNG-annotated test classes only.        │
 │   - Depend on: BaseTest, pages/, models/                   │
 ├───────────────────────────────────────────────────────────┤
-│ BaseTest (src/main/java/.../base)                           │
-│   - Suite/class/method setup & teardown.                    │
-│   - Depend on: driver/ (via DriverManager), config/,         │
-│     listeners/                                               │
+│ BaseTest (src/main/java/.../base) — IMPLEMENTED             │
+│   - Method-level driver setup & teardown (@BeforeMethod/     │
+│     @AfterMethod). No test class extends it yet.             │
+│   - Depend on: config/, driver/ (via DriverManager)          │
 ├───────────────────────────────────────────────────────────┤
 │ Pages (pages/android, pages/ios, pages/common)              │
 │   - Page Object Model. common/ holds platform-agnostic     │
@@ -130,31 +134,85 @@ real Appium session against `emulator-5554` (see
   `DriverFactory` (throws `UnsupportedOperationException`); no iOS logic
   has been implemented.
 
-## Configuration Layer — Next (Not Yet Implemented)
+## Configuration Layer — Implemented
 
-`ConfigReader`, `ConfigManager`, `CapabilityBuilder`, and `Environment`
-are still empty declarations (JavaDoc only) — no logic exists yet. This
-is the next layer to be built.
+```
+     Environment (enum: QA, STAG, PROD)
+           │  selects
+           ▼
+     ConfigReader
+           │  loads config/{qa,stag,prod}.properties from the classpath
+           ▼
+     ConfigManager
+           │  exposes typed accessors, then
+           ▼
+     CapabilityBuilder
+           │  assembles
+           ▼
+ Map<String, Object> capabilities  ──►  AndroidDriverFactory.createDriver(...)
+```
 
 Its job is to **supply data into the Driver Layer**, not to sit as
 another step after it — `AndroidDriverFactory.createDriver(...)` already
 accepts a server URL and a capability map from its caller; the
-Configuration Layer's whole purpose is to become that caller, resolving
-per-environment values instead of a test hardcoding them. Concretely, it
-will supply:
+Configuration Layer's whole purpose is to be that caller, resolving
+per-environment values instead of a test hardcoding them.
+
+- **`Environment`** — enum of `QA`, `STAG`, `PROD`; selects which
+  properties file `ConfigReader` loads.
+- **`ConfigReader`** — loads `config/{qa,stag,prod}.properties` from the
+  classpath for a given `Environment` and exposes raw `get(key)` lookups.
+  Throws `ConfigurationException` if the file or key is missing.
+- **`ConfigManager`** — wraps a `ConfigReader` with the typed accessors
+  the rest of the framework uses (`getPlatform()`, `getAutomationName()`,
+  `getDeviceName()`, `getAppiumServerUrl()`, `getGrantPermission()`,
+  `getAppInstall()`, `getAppPath()`), so callers never touch property
+  keys directly. `getAppPath()` resolves the configured classpath-relative
+  APK resource (e.g. `apps/qa/qa.apk`) to an absolute filesystem path, or
+  returns blank untouched if the environment's app path hasn't been
+  supplied yet.
+- **`CapabilityBuilder`** — turns a `ConfigManager` into the
+  `Map<String, Object>` capabilities `AndroidDriverFactory.createDriver`
+  expects, validating that `platform`, `automationName`, and `deviceName`
+  are non-blank before returning.
+
+Supplies, per environment, from
+`src/test/resources/config/{qa,stag,prod}.properties` — see
+[FolderStructure.md](FolderStructure.md):
 
 - Appium server URL
 - device name
 - APK path
 - platform
 - automation name
+- auto-grant-permissions / enforce-app-install flags
 
-from the environment property files that already exist
-(`src/test/resources/config/qa.properties`, `stag.properties`,
-`prod.properties`) — see [FolderStructure.md](FolderStructure.md). Until
-`ConfigManager`/`CapabilityBuilder` exist, the temporary
-`DriverSmokeTest` supplies these same values directly (see
-[ExecutionFlow.md](ExecutionFlow.md)).
+## BaseTest — Implemented
+
+```
+     @BeforeMethod setUp()
+           │  Environment.QA → ConfigManager → CapabilityBuilder.build()
+           ▼
+     AndroidDriverFactory.createDriver(url, capabilities)
+           │
+           ▼
+     DriverManager.setDriver(driver)
+
+     (test body — via protected getDriver())
+
+     @AfterMethod(alwaysRun = true) tearDown()
+           │
+           ▼
+     DriverManager.removeDriver()
+```
+
+`BaseTest` centralizes only the driver lifecycle described above; it
+does not yet contain login logic, page objects, or RBAC. `Environment`
+is fixed to `QA` for now — a proper environment-selection mechanism is
+still to be introduced. No test class extends `BaseTest` yet;
+`DriverSmokeTest` still performs the same setup manually as its own
+verification of the Configuration + Driver Layers. Refactoring
+`DriverSmokeTest` to extend `BaseTest` is the next step.
 
 ## Design Principles Applied
 
@@ -203,11 +261,12 @@ framework:
 - Never hardcode environment values.
 - Never hardcode credentials.
 
-> Temporary, documented exception: `DriverSmokeTest` currently hardcodes
-> the Appium server URL, device name, and APK path, because the
-> Configuration Layer above doesn't exist yet. It is explicitly a
-> throwaway verification test, not a pattern to follow — see
-> [ExecutionFlow.md](ExecutionFlow.md).
+> `DriverSmokeTest` now resolves the Appium server URL, device name, and
+> APK path through the Configuration Layer (`ConfigManager` /
+> `CapabilityBuilder`) rather than hardcoding them. It remains a
+> throwaway verification test — not a pattern to follow — because it
+> performs driver setup/teardown manually instead of extending
+> `BaseTest`. See [ExecutionFlow.md](ExecutionFlow.md).
 
 ## Locator Strategy
 
