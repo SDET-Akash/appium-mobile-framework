@@ -9,6 +9,8 @@ import java.util.Properties;
 public class UserDataReader {
 
     private final Properties properties = new Properties();
+    private static final String USER_DATA_FILE =
+            "testdata/users.properties";
 
     public UserDataReader() {
         loadProperties();
@@ -16,14 +18,14 @@ public class UserDataReader {
 
     private void loadProperties() {
 
-        String filePath = "testdata/users.properties";
-
         try (InputStream inputStream =
-                     getClass().getClassLoader().getResourceAsStream(filePath)) {
+                     getClass().getClassLoader()
+                             .getResourceAsStream(USER_DATA_FILE)) {
 
             if (inputStream == null) {
                 throw new ConfigurationException(
-                        "User data file not found on classpath: " + filePath
+                        "User data file not found on classpath: "
+                                + USER_DATA_FILE
                 );
             }
 
@@ -31,7 +33,8 @@ public class UserDataReader {
 
         } catch (IOException e) {
             throw new ConfigurationException(
-                    "Failed to load user data file: " + filePath,
+                    "Failed to load user data file: "
+                            + USER_DATA_FILE,
                     e
             );
         }

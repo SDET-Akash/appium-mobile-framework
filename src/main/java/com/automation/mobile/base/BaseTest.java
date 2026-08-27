@@ -3,6 +3,7 @@ package com.automation.mobile.base;
 import com.automation.mobile.config.CapabilityBuilder;
 import com.automation.mobile.config.ConfigManager;
 import com.automation.mobile.config.Environment;
+import com.automation.mobile.config.EnvironmentManager;
 import com.automation.mobile.driver.AndroidDriverFactory;
 import com.automation.mobile.driver.DriverManager;
 import com.automation.mobile.exceptions.DriverInitializationException;
@@ -18,14 +19,12 @@ import java.util.Map;
 
 /**
  * Base class every test class extends. Owns method-level driver
- * lifecycle: resolving config via {@link ConfigManager}, building
- * capabilities via {@link CapabilityBuilder}, creating a driver session
- * through {@link AndroidDriverFactory}, and storing/releasing it via
- * {@link DriverManager} — so individual test classes never touch config
- * or driver lifecycle directly.
- * <p>
- * Environment is currently fixed to {@link Environment#QA}; a proper
- * environment-selection mechanism will be introduced later.
+ * lifecycle: resolving the current environment configuration,
+ * building capabilities, creating the Android driver session,
+ * and storing/releasing it through DriverManager.
+ *
+ * Test classes therefore do not need to manage driver lifecycle
+ * directly.
  */
 public class BaseTest {
 
@@ -33,13 +32,16 @@ public class BaseTest {
 
     @BeforeMethod
     public void setUp() {
-        LOGGER.info("Setting up Android driver session for environment: {}", Environment.QA);
 
+        Environment environment = EnvironmentManager.getEnvironment();
 
-//        Environment is currently fixed to Environment#QA;
-//        a proper environment-selection mechanism will be introduced later.
+        LOGGER.info(
+                "Setting up Android driver session for environment: {}",
+                environment
+        );
 
-        ConfigManager configManager = new ConfigManager(Environment.QA);
+        ConfigManager configManager = new ConfigManager(environment);
+
         CapabilityBuilder capabilityBuilder = new CapabilityBuilder(configManager);
         Map<String, Object> capabilities = capabilityBuilder.build();
 

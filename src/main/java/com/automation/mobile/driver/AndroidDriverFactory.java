@@ -30,9 +30,11 @@ public class AndroidDriverFactory implements DriverFactory {
         LOGGER.info("Starting Android driver creation against Appium server: {}", appiumServerUrl);
 
         UiAutomator2Options options = buildOptions(capabilities);
-//        LOGGER.debug("Android capabilities prepared with keys: {}",
-//                capabilities == null ? "[]" : capabilities.keySet());
-        LOGGER.debug("Android capabilities prepared: {}", capabilities);
+
+        LOGGER.debug(
+                "Android capabilities prepared with keys: {}",
+                capabilities == null ? "[]" : capabilities.keySet()
+        );
 
         try {
             AndroidDriver driver = new AndroidDriver(appiumServerUrl, options);

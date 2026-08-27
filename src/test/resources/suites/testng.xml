@@ -5,8 +5,11 @@
 -->
 <suite name="Mobile Automation Suite" verbose="1">
 
-    <!-- Temporary Driver Layer verification test — remove once real
-         tests exist on top of BaseTest/BasePage. -->
+    <listeners>
+        <listener class-name="com.automation.mobile.listeners.TestListener"/>
+    </listeners>
+
+
     <test name="Driver Smoke Test">
         <classes>
             <class name="com.automation.mobile.tests.android.DriverSmokeTest"/>

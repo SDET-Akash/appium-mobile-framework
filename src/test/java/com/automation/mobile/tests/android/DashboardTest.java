@@ -1,13 +1,10 @@
 package com.automation.mobile.tests.android;
 
 import com.automation.mobile.base.BaseTest;
-import com.automation.mobile.config.UserDataManager;
+import com.automation.mobile.flows.LoginFlow;
 import com.automation.mobile.pages.android.DashboardPage;
-import com.automation.mobile.pages.android.LoginPage;
 import org.testng.Assert;
 import org.testng.annotations.Test;
-
-import static com.automation.mobile.driver.DriverManager.getDriver;
 
 public class DashboardTest extends BaseTest {
 
@@ -15,18 +12,11 @@ public class DashboardTest extends BaseTest {
     public void verifyDashboardTabs() {
 
         // Login
-        UserDataManager userDataManager = new UserDataManager();
+        LoginFlow loginFlow = new LoginFlow(getDriver());
 
-        LoginPage loginPage = new LoginPage(getDriver());
+        DashboardPage dashboardPage = loginFlow.loginAsValidUser();
 
-        loginPage
-                .enterEmail(userDataManager.getValidUserEmail())
-                .enterPassword(userDataManager.getValidUserPassword())
-                .clickSignIn();
-
-        // Dashboard
-        DashboardPage dashboardPage = new DashboardPage(getDriver());
-
+        // Verify Dashboard
         Assert.assertTrue(
                 dashboardPage.isDashboardDisplayed(),
                 "Dashboard should be displayed after login"

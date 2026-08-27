@@ -15,4 +15,12 @@ public class UserDataManager {
     public String getValidUserPassword() {
         return userDataReader.get("validUserPassword");
     }
+
+    public String getInvalidUserEmail(){
+        return userDataReader.get("invalidUserEmail");
+    }
+
+    public String getInvalidUserPassword() {
+        return userDataReader.get("invalidUserPassword");
+    }
 }

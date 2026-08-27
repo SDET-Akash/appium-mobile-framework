@@ -10,10 +10,10 @@ import org.testng.annotations.Test;
 
 public class LoginTest extends BaseTest {
 
+    private final UserDataManager userDataManager = new UserDataManager();
+
     @Test
     public void verifyUserCanLoginSuccessfully() {
-
-        UserDataManager userDataManager = new UserDataManager();
 
         LoginPage loginPage = new LoginPage(getDriver());
 
@@ -36,8 +36,8 @@ public class LoginTest extends BaseTest {
         LoginPage loginPage = new LoginPage(getDriver());
 
         loginPage
-                .enterEmail("wrong@yopmail.com")
-                .enterPassword("WrongPassword")
+                .enterEmail(userDataManager.getInvalidUserEmail())
+                .enterPassword(userDataManager.getInvalidUserPassword())
                 .clickSignIn();
 
         Assert.assertTrue(
