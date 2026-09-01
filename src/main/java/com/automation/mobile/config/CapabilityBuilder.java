@@ -37,9 +37,6 @@ public class CapabilityBuilder {
         requireNonBlank("platform", platform);
         requireNonBlank("automationName", automationName);
         requireNonBlank("deviceName", deviceName);
-//        requireNonBlank("autoGrantPermissions", permission);
-//        requireNonBlank("appium:enforceAppInstall", enforceInstall);
-
 
         Map<String, Object> capabilities = new LinkedHashMap<>();
         capabilities.put("platformName", platform);
@@ -47,7 +44,6 @@ public class CapabilityBuilder {
         capabilities.put("deviceName", deviceName);
         capabilities.put("autoGrantPermissions", permission);
         capabilities.put("enforceAppInstall", enforceInstall);
-
 
         if (appPath != null && !appPath.trim().isEmpty()) {
             capabilities.put("app", appPath);

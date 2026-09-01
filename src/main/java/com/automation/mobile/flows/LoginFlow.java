@@ -30,7 +30,7 @@ public class LoginFlow {
                 .enterPassword(userDataManager.getValidUserPassword())
                 .clickSignIn();
 
-        LOGGER.info("Valid user login completed");
+        LOGGER.info("Valid user login flow completed");
 
         return new DashboardPage(driver);
     }

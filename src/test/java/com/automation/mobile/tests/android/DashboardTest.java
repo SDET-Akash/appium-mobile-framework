@@ -1,25 +1,22 @@
 package com.automation.mobile.tests.android;
 
-import com.automation.mobile.base.BaseTest;
-import com.automation.mobile.flows.LoginFlow;
+import com.automation.mobile.base.AuthenticatedBaseTest;
 import com.automation.mobile.pages.android.DashboardPage;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-public class DashboardTest extends BaseTest {
+public class DashboardTest extends AuthenticatedBaseTest {
 
     @Test
     public void verifyDashboardTabs() {
 
-        // Login
-        LoginFlow loginFlow = new LoginFlow(getDriver());
-
-        DashboardPage dashboardPage = loginFlow.loginAsValidUser();
+        DashboardPage dashboardPage =
+                new DashboardPage(getDriver());
 
         // Verify Dashboard
         Assert.assertTrue(
                 dashboardPage.isDashboardDisplayed(),
-                "Dashboard should be displayed after login"
+                "Dashboard should be displayed after authentication"
         );
 
         // Verify Dashboard tab

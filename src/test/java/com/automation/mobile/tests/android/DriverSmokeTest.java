@@ -1,21 +1,12 @@
 package com.automation.mobile.tests.android;
 
 import com.automation.mobile.base.BaseTest;
-import com.automation.mobile.config.CapabilityBuilder;
-import com.automation.mobile.config.ConfigManager;
-import com.automation.mobile.config.Environment;
-import com.automation.mobile.driver.AndroidDriverFactory;
 import com.automation.mobile.driver.DriverManager;
 import io.appium.java_client.android.AndroidDriver;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.testng.Assert;
-import org.testng.annotations.AfterMethod;
 import org.testng.annotations.Test;
-
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.Map;
 
 /**
  * Temporary smoke test verifying that the Configuration Layer
@@ -32,16 +23,7 @@ public class DriverSmokeTest extends BaseTest {
     private static final Logger LOGGER = LogManager.getLogger(DriverSmokeTest.class);
 
     @Test
-    public void verifyAndroidDriverSessionIsCreated() throws MalformedURLException {
-//        ConfigManager configManager = new ConfigManager(Environment.QA);
-//        CapabilityBuilder capabilityBuilder = new CapabilityBuilder(configManager);
-//        Map<String, Object> capabilities = capabilityBuilder.build();
-//        URL appiumServerUrl = new URL(configManager.getAppiumServerUrl());
-
-//        AndroidDriverFactory androidDriverFactory = new AndroidDriverFactory();
-//        AndroidDriver driver = androidDriverFactory.createDriver(appiumServerUrl, capabilities);
-//        DriverManager.setDriver(driver);
-
+    public void verifyAndroidDriverSessionIsCreated() {
         AndroidDriver activeDriver = DriverManager.getDriver();
         Assert.assertNotNull(activeDriver, "Driver returned by DriverManager must not be null");
         Assert.assertNotNull(activeDriver.getSessionId(), "Appium session ID must not be null");
@@ -53,9 +35,4 @@ public class DriverSmokeTest extends BaseTest {
         Assert.assertNotNull(activeDriver.getCurrentPackage(), "App does not appear to have launched — current package is null");
         Assert.assertFalse(activeDriver.getCurrentPackage().trim().isEmpty(), "App does not appear to have launched — current package is blank");
     }
-
-//    @AfterMethod(alwaysRun = true)
-//    public void tearDown() {
-//        DriverManager.removeDriver();
-//    }
 }

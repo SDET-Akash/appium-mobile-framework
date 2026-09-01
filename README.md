@@ -3,13 +3,17 @@
 Production-grade, cross-platform (Android now, iOS-ready) mobile UI automation
 framework built on Appium 2.x, Selenium 4 and TestNG.
 
-> **Status:** the Configuration Layer (`Environment`, `ConfigReader`,
-> `ConfigManager`, `CapabilityBuilder`), the Android Driver Layer
-> (`AndroidDriverFactory`, `DriverManager`), and `BaseTest` (centralized
-> driver setup/teardown) are implemented and verified against a real
-> Appium session. No test class extends `BaseTest` yet, and page
-> objects/reporting/listeners are still scaffolding only — see
-> [docs/Architecture.md](docs/Architecture.md) for the full breakdown.
+> **Status (updated 2026-08-27):** the Configuration Layer, the Android
+> Driver Layer, `BaseTest`, `BasePage`, and the Android page objects
+> (`LoginPage`, `DashboardPage`) plus `LoginFlow` and `TestListener` are
+> implemented and verified — three test classes (`DriverSmokeTest`,
+> `LoginTest`, `DashboardTest`) currently pass against a real Appium
+> session. Reporting (`AllureManager`, `ExtentReportManager`), retry
+> handling (`RetryAnalyzer`, `AnnotationTransformer`), and iOS support
+> remain scaffolding only — see [docs/Architecture.md](docs/Architecture.md)
+> for the full breakdown. A repository cleanup pass (removing empty,
+> purposeless placeholder packages and dead/commented-out code) was
+> completed on 2026-08-27.
 
 ## Tech Stack
 
@@ -36,35 +40,40 @@ appium-mobile-framework/
 ├── src/
 │   ├── main/
 │   │   ├── java/com/automation/mobile/
-│   │   │   ├── base/                      # BaseTest (implemented), BasePage (planned)
-│   │   │   ├── config/                    # Environment, ConfigReader, ConfigManager,
-│   │   │   │                              # CapabilityBuilder — implemented
+│   │   │   ├── base/                      # BaseTest, BasePage — implemented
+│   │   │   ├── config/                    # Environment, EnvironmentManager, ConfigReader,
+│   │   │   │                              # ConfigManager, CapabilityBuilder, UserDataReader,
+│   │   │   │                              # UserDataManager — implemented
 │   │   │   ├── driver/                    # DriverFactory, AndroidDriverFactory,
 │   │   │   │                              # DriverManager (implemented); IOSDriverFactory (stub)
+│   │   │   ├── flows/                     # LoginFlow (implemented) — multi-page test flows
 │   │   │   ├── pages/
-│   │   │   │   ├── android/                  # Android page/screen objects (planned)
-│   │   │   │   ├── ios/                      # iOS page/screen objects (planned)
-│   │   │   │   └── common/                   # Cross-platform screen contracts (planned)
-│   │   │   ├── listeners/                 # TestNG / Allure listeners (planned)
-│   │   │   ├── reports/                   # ExtentReports/Allure managers (planned)
-│   │   │   ├── utils/                     # Waits, gestures, helpers (planned)
-│   │   │   ├── constants/                 # Framework-wide constants (planned)
-│   │   │   ├── enums/                     # Shared enums (planned)
+│   │   │   │   ├── android/                  # LoginPage, DashboardPage — implemented
+│   │   │   │   ├── ios/                      # iOS page/screen objects (reserved, empty)
+│   │   │   │   └── common/                   # Cross-platform screen contracts (reserved, empty)
+│   │   │   ├── listeners/                 # TestListener (implemented, registered);
+│   │   │   │                              # RetryAnalyzer/AnnotationTransformer (empty, unwired)
+│   │   │   ├── reports/                   # ExtentReportManager/AllureManager (empty, unused)
+│   │   │   ├── utils/
+│   │   │   │   ├── screenshot/               # ScreenshotUtil — implemented
+│   │   │   │   └── gesture/                  # Reserved for future gesture helpers (empty)
 │   │   │   └── exceptions/                # Custom framework exceptions — implemented
+│   │   │                                  # (PageOperationException defined but not yet thrown)
 │   │   └── resources/
 │   └── test/
 │       ├── java/com/automation/mobile/
 │       │   └── tests/
-│       │       ├── android/                  # DriverSmokeTest (temporary verification test)
-│       │       └── ios/
+│       │       ├── android/                  # DriverSmokeTest, LoginTest, DashboardTest — passing
+│       │       └── ios/                      # reserved, empty
 │       └── resources/
 │           ├── apps/                      # Staged APKs per environment
-│           │   └── qa/qa.apk               # QA APK; stag/prod not staged yet
+│           │   ├── qa/kylas-qa-debug.apk     # QA APK — staged
+│           │   └── stag/                     # reserved; no STAG APK staged yet
 │           ├── config/                    # Per-environment configuration
 │           │   ├── qa.properties          # QA environment values (fully populated)
 │           │   ├── stag.properties        # Staging environment values (appPath blank)
 │           │   └── prod.properties        # Production environment values (appPath blank)
-│           ├── testdata/                  # JSON/Excel/CSV test data
+│           ├── testdata/                  # users.properties — valid/invalid login credentials
 │           ├── suites/                    # TestNG XML suite files
 │           └── log4j2.xml                 # Logging configuration
 ```
@@ -74,10 +83,13 @@ package for shared contracts, so platform-specific implementations can
 diverge without leaking into shared test logic — in line with the
 Interface Segregation / Dependency Inversion principles the driver layer
 already follows. See [docs/FolderStructure.md](docs/FolderStructure.md)
-for the fully annotated, up-to-date tree.
+for the fully annotated, up-to-date tree, including which empty
+directories were removed in the 2026-08-27 cleanup versus which are
+intentionally kept for near-term planned work.
 
-Empty directories contain a `.gitkeep` so the structure is preserved in git
-until real classes are added.
+Reserved directories (`pages/ios`, `pages/common`, `utils/gesture`,
+`tests/ios`, `apps/stag`) contain only a `.gitkeep` so the structure is
+preserved in git until real classes/assets are added.
 
 ## Dependencies — What and Why
 
@@ -113,19 +125,24 @@ unnecessary libraries."
 mvn clean test
 ```
 
-This runs `DriverSmokeTest`, which creates a real Android Appium session
-against a running Appium server and emulator/device (`emulator-5554` by
-default, per `qa.properties`) and launches the QA APK. An Appium server
-and an available Android device/emulator must be running first.
+This runs `suites/testng.xml` (`DriverSmokeTest`, `LoginTest`,
+`DashboardTest`), each creating its own real Android Appium session via
+`BaseTest` against a running Appium server and emulator/device
+(`emulator-5554` by default, per `qa.properties`) and launching the QA
+APK. An Appium server and an available Android device/emulator must be
+running first. Pass `-Denv=stag` / `-Denv=prod` to target a different
+environment (`EnvironmentManager` defaults to `qa`); note `stag`/`prod`
+have no APK staged yet (`appPath` is blank in their properties files).
 
 ## Next Steps
 
-- Refactor `DriverSmokeTest` to extend `BaseTest` instead of performing
-  driver setup/teardown manually.
-- Introduce a proper environment-selection mechanism (`BaseTest`
-  currently fixes `Environment.QA`).
-- Implement `BasePage` and the first real page objects/tests
-  (`LoginPage`, `LoginTest`).
+- Centralize login/session handling so tests reuse `LoginFlow` instead
+  of `LoginTest` duplicating its login steps inline (see
+  [docs/Architecture.md#known-duplication](docs/Architecture.md#known-duplication)) — planned, not part of the 2026-08-27 cleanup.
+- Implement `ExtentReportManager`/`AllureManager` reporting output.
+- Wire up `RetryAnalyzer` via `AnnotationTransformer` for flaky-test
+  retries.
+- Add iOS support (`IOSDriverFactory`, `pages/ios`, `tests/ios`).
 
 See [docs/FrameworkFlow.md](docs/FrameworkFlow.md) for the full
-implemented/next/planned breakdown.
+implemented/not-yet-implemented breakdown.

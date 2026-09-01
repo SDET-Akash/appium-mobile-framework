@@ -1,14 +1,15 @@
 # Architecture
 
-> Status: the Android Driver Layer, the Configuration Layer, and
-> `BaseTest` are implemented and verified against a real Appium session
-> (see [Driver Layer — Implemented](#driver-layer--implemented) and
-> [Configuration Layer — Implemented](#configuration-layer--implemented)
-> below). `BaseTest` centralizes the same driver-lifecycle flow
-> `DriverSmokeTest` performs manually, but no test class extends it yet —
-> that refactor is the next step. Everything else described in this
-> document beyond those sections — BasePage, Pages, reporting, listeners
-> — is still the target design, not code that currently exists.
+> Status (updated 2026-08-27): the Configuration Layer, the Android
+> Driver Layer, `BaseTest`, `BasePage`, and the Android Page Object
+> layer (`LoginPage`, `DashboardPage`) are all implemented and
+> verified — three test classes (`DriverSmokeTest`, `LoginTest`,
+> `DashboardTest`) currently pass against a real Appium/Android
+> session (see [ExecutionFlow.md](ExecutionFlow.md)). `TestListener`
+> is implemented and registered. Reporting (`AllureManager`,
+> `ExtentReportManager`), `RetryAnalyzer`, and `AnnotationTransformer`
+> remain scaffolding with no logic. iOS support does not exist beyond
+> the `IOSDriverFactory` stub and empty `pages/ios` package.
 
 ## Goals
 
@@ -46,63 +47,68 @@
 
 ```
 ┌───────────────────────────────────────────────────────────┐
-│ Tests (src/test/java/.../tests)                            │
-│   - JUnit-free, TestNG-annotated test classes only.        │
-│   - Depend on: BaseTest, pages/, models/                   │
+│ Tests (src/test/java/.../tests) — IMPLEMENTED (Android)     │
+│   - TestNG-annotated test classes only.                    │
+│   - Depend on: BaseTest, pages/, flows/, config/            │
 ├───────────────────────────────────────────────────────────┤
 │ BaseTest (src/main/java/.../base) — IMPLEMENTED             │
 │   - Method-level driver setup & teardown (@BeforeMethod/     │
-│     @AfterMethod). No test class extends it yet.             │
+│     @AfterMethod). Every current test class extends it.      │
 │   - Depend on: config/, driver/ (via DriverManager)          │
 ├───────────────────────────────────────────────────────────┤
-│ Pages (pages/android, pages/ios, pages/common)              │
-│   - Page Object Model. common/ holds platform-agnostic     │
-│     contracts; android/ and ios/ hold implementations.     │
-│   - Every Page Object extends BasePage.                    │
-│   - Depend on: BasePage only — never DriverManager directly│
+│ Pages (pages/android) — IMPLEMENTED; pages/ios, pages/common │
+│ remain empty                                                 │
+│   - Page Object Model. android/ holds LoginPage/             │
+│     DashboardPage; ios/ and common/ are reserved for later.  │
+│   - Every Page Object extends BasePage.                      │
+│   - Depend on: BasePage only — never DriverManager directly  │
 ├───────────────────────────────────────────────────────────┤
-│ BasePage (src/main/java/.../base)                            │
-│   - Owns ALL low-level driver interaction (element lookup,   │
-│     waits, gestures) on behalf of Page Objects.               │
-│   - Depend on: driver/ (via DriverManager), utils/            │
+│ BasePage (src/main/java/.../base) — IMPLEMENTED              │
+│   - Owns low-level driver interaction (element click/text     │
+│     entry/visibility) via PageFactory + WebDriverWait.        │
+│     Waiting is inline in BasePage — there is no separate      │
+│     WaitUtils/utils/wait class.                               │
+│   - Depend on: driver/ (via AndroidDriver passed by the page) │
 ├───────────────────────────────────────────────────────────┤
 │ Driver (driver/) — IMPLEMENTED                               │
 │   - DriverManager (lifecycle/thread-local ownership),        │
 │     delegating creation to DriverFactory (contract).         │
-│   - Depend on: config/ (capabilities, once it exists),        │
-│     exceptions/                                               │
+│   - Depend on: exceptions/                                   │
 ├───────────────────────────────────────────────────────────┤
 │ DriverFactory implementations (driver/) — Android IMPLEMENTED│
 │   - AndroidDriverFactory (implemented) /                     │
 │     IOSDriverFactory (stub only, throws Unsupported-          │
 │     OperationException).                                     │
 ├───────────────────────────────────────────────────────────┤
-│ Config (config/) — NOT YET IMPLEMENTED (empty declarations)  │
+│ Config (config/) — IMPLEMENTED                                │
 │   - ConfigReader (source) → ConfigManager (typed access) →   │
-│     CapabilityBuilder (Appium options) → Environment (enum).  │
+│     CapabilityBuilder (Appium options) → Environment (enum), │
+│     EnvironmentManager (env selection).                       │
 ├───────────────────────────────────────────────────────────┤
-│ Cross-cutting: listeners/, reports/, utils/, exceptions/,     │
-│ constants/, enums/, models/, builders/, factory/               │
+│ Cross-cutting: listeners/ (TestListener implemented;          │
+│ RetryAnalyzer/AnnotationTransformer empty), reports/ (both     │
+│ empty), utils/screenshot (implemented), utils/gesture          │
+│ (reserved, empty), exceptions/ (implemented)                  │
 └───────────────────────────────────────────────────────────┘
 ```
 
 Dependency direction flows top-to-bottom only: Tests depend on BaseTest,
-BaseTest depends on Pages/driver/config, Pages depend only on BasePage,
-BasePage depends on DriverManager, DriverManager depends on
+BaseTest depends on driver/config and (indirectly, via test bodies)
+Pages/flows, Pages depend only on BasePage, BasePage depends on the
+AndroidDriver it's constructed with, DriverManager depends on
 DriverFactory, DriverFactory is implemented per platform. Nothing below
 depends on anything above it.
 
-**Page Objects must never access `DriverManager` directly.** All driver
-interaction is routed through `BasePage` — this is the one rule that
-keeps the Pages layer decoupled from driver lifecycle concerns and is
-what makes swapping/mocking the driver layer possible without touching
-any page object.
+**Page Objects must never access `DriverManager` directly.** Page
+objects receive their `AndroidDriver` through their constructor
+(supplied by the caller via `BaseTest.getDriver()`), and all low-level
+interaction is routed through `BasePage` — this keeps the Pages layer
+decoupled from driver lifecycle concerns.
 
 ## Driver Layer — Implemented
 
-The Android slice of the driver layer is implemented and has created a
-real Appium session against `emulator-5554` (see
-[ExecutionFlow.md](ExecutionFlow.md) for the verified run):
+The Android slice of the driver layer is implemented and backs every
+passing test in the suite (see [ExecutionFlow.md](ExecutionFlow.md)):
 
 ```
      DriverFactory  (contract)
@@ -137,8 +143,9 @@ real Appium session against `emulator-5554` (see
 ## Configuration Layer — Implemented
 
 ```
-     Environment (enum: QA, STAG, PROD)
-           │  selects
+     EnvironmentManager
+           │  resolves active Environment (enum: QA, STAG, PROD)
+           │  from the `-Denv` system property (defaults to QA)
            ▼
      ConfigReader
            │  loads config/{qa,stag,prod}.properties from the classpath
@@ -152,14 +159,11 @@ real Appium session against `emulator-5554` (see
  Map<String, Object> capabilities  ──►  AndroidDriverFactory.createDriver(...)
 ```
 
-Its job is to **supply data into the Driver Layer**, not to sit as
-another step after it — `AndroidDriverFactory.createDriver(...)` already
-accepts a server URL and a capability map from its caller; the
-Configuration Layer's whole purpose is to be that caller, resolving
-per-environment values instead of a test hardcoding them.
-
 - **`Environment`** — enum of `QA`, `STAG`, `PROD`; selects which
   properties file `ConfigReader` loads.
+- **`EnvironmentManager`** — resolves the active `Environment` from the
+  `env` system property (`-Denv=stag`), defaulting to `QA` if unset.
+  `BaseTest.setUp()` calls this rather than hardcoding an environment.
 - **`ConfigReader`** — loads `config/{qa,stag,prod}.properties` from the
   classpath for a given `Environment` and exposes raw `get(key)` lookups.
   Throws `ConfigurationException` if the file or key is missing.
@@ -168,13 +172,18 @@ per-environment values instead of a test hardcoding them.
   `getDeviceName()`, `getAppiumServerUrl()`, `getGrantPermission()`,
   `getAppInstall()`, `getAppPath()`), so callers never touch property
   keys directly. `getAppPath()` resolves the configured classpath-relative
-  APK resource (e.g. `apps/qa/qa.apk`) to an absolute filesystem path, or
-  returns blank untouched if the environment's app path hasn't been
-  supplied yet.
+  APK resource (e.g. `apps/qa/kylas-qa-debug.apk`) to an absolute
+  filesystem path, or returns blank untouched if the environment's app
+  path hasn't been supplied yet.
 - **`CapabilityBuilder`** — turns a `ConfigManager` into the
   `Map<String, Object>` capabilities `AndroidDriverFactory.createDriver`
   expects, validating that `platform`, `automationName`, and `deviceName`
   are non-blank before returning.
+- **`UserDataReader`** / **`UserDataManager`** — load
+  `testdata/users.properties` and expose typed accessors
+  (`getValidUserEmail()`, `getValidUserPassword()`,
+  `getInvalidUserEmail()`, `getInvalidUserPassword()`) used by
+  `LoginTest` and `LoginFlow`.
 
 Supplies, per environment, from
 `src/test/resources/config/{qa,stag,prod}.properties` — see
@@ -191,7 +200,8 @@ Supplies, per environment, from
 
 ```
      @BeforeMethod setUp()
-           │  Environment.QA → ConfigManager → CapabilityBuilder.build()
+           │  EnvironmentManager.getEnvironment() → ConfigManager
+           │  → CapabilityBuilder.build()
            ▼
      AndroidDriverFactory.createDriver(url, capabilities)
            │
@@ -206,13 +216,36 @@ Supplies, per environment, from
      DriverManager.removeDriver()
 ```
 
-`BaseTest` centralizes only the driver lifecycle described above; it
-does not yet contain login logic, page objects, or RBAC. `Environment`
-is fixed to `QA` for now — a proper environment-selection mechanism is
-still to be introduced. No test class extends `BaseTest` yet;
-`DriverSmokeTest` still performs the same setup manually as its own
-verification of the Configuration + Driver Layers. Refactoring
-`DriverSmokeTest` to extend `BaseTest` is the next step.
+`BaseTest` centralizes the driver lifecycle above; it does not contain
+login logic, page navigation, or RBAC. All three current test classes
+(`DriverSmokeTest`, `LoginTest`, `DashboardTest`) extend it.
+
+## Page Object Model — Implemented (Android)
+
+- **`BasePage`** — constructor takes an `AndroidDriver`, initializes
+  `@AndroidFindBy`-annotated fields via `AppiumFieldDecorator`, and
+  exposes `click`, `enterText`, `clearAndEnterText`, `getText`, and
+  `isDisplayed` helpers, each waiting via a 15-second `WebDriverWait`.
+- **`LoginPage`** — email/password entry, sign-in, forgot-password,
+  and invalid-login-message assertion.
+- **`DashboardPage`** — dashboard/meetings/tasks tab navigation and
+  selected-state checks.
+
+## Flows — Implemented (partial)
+
+- **`LoginFlow`** — wraps `LoginPage` + `UserDataManager` behind a
+  single `loginAsValidUser()` call that returns a `DashboardPage`. Used
+  by `DashboardTest`.
+
+<a id="known-duplication"></a>
+**Known duplication (not addressed by this cleanup):** `LoginTest`
+drives `LoginPage` directly instead of going through `LoginFlow`, so
+the valid-login steps are implemented twice (once in `LoginFlow`, once
+inline in `LoginTest.verifyUserCanLoginSuccessfully`). Centralizing
+login/session handling so tests reuse `LoginFlow` (or a similar
+mechanism) instead of duplicating these steps is a separate, planned
+task — this cleanup intentionally left both implementations in place
+rather than merging them.
 
 ## Design Principles Applied
 
@@ -226,26 +259,60 @@ verification of the Configuration + Driver Layers. Refactoring
   `DriverFactory` interface, never on `AndroidDriverFactory` or
   `IOSDriverFactory` directly; Page Objects depend on `BasePage`, never
   on `DriverManager` or the interface below it.
-- **Interface Segregation** — `pages/common` will define narrow,
-  per-screen contracts rather than one large shared base.
+- **Interface Segregation** — `pages/common` is reserved for narrow,
+  per-screen contracts once a second platform needs to share them;
+  nothing currently requires it since only Android is implemented.
 
 ## Platform Extensibility (Android → iOS)
 
-Android is the only platform exercised in v1. The `ios/` folders under
-`driver/` (as `IOSDriverFactory`) and `pages/ios` already exist so iOS
-support is additive later: new factory + new page implementations
-against the same `pages/common` contracts, no changes to `DriverManager`,
-`ConfigManager`, `BaseTest`, or existing Android code.
+Android is the only platform exercised today. The `IOSDriverFactory`
+stub and the empty `pages/ios` package already exist so iOS support is
+additive later: new factory + new page implementations against the
+same (currently empty) `pages/common` contracts, no changes to
+`DriverManager`, `ConfigManager`, `BaseTest`, or existing Android code.
 
 ## Reporting & Logging
 
-Two independent, parallel reporting paths — `reports/ExtentReportManager`
-(standalone HTML dashboard) and `reports/AllureManager` (step/attachment
-data for the `allure-testng` adapter) — both fed from the same
-`listeners/TestListener` hook so test outcomes are captured once and
-distributed to both reports. All layers log through Log4j2
-(`log4j2.xml`), including third-party library logs bridged via
-`log4j-slf4j2-impl`.
+All layers log through Log4j2 (`log4j2.xml`), including third-party
+library logs bridged via `log4j-slf4j2-impl`. `TestListener`
+(registered in `suites/testng.xml`) logs test start/pass/fail/skip and,
+on failure, calls `ScreenshotUtil.takeScreenshot(...)` to save a
+screenshot under `target/screenshots/`.
+
+**`reports/ExtentReportManager` and `reports/AllureManager` are both
+empty classes with no logic** — neither is referenced anywhere in the
+codebase. The `allure-testng` Maven dependency is present and will
+still generate raw Allure results from TestNG execution on its own
+(independent of `AllureManager`), but no framework code currently
+enriches that output (e.g. attaching screenshots to Allure steps) or
+produces an ExtentReports HTML dashboard. Building out one or both of
+these is future work, not something this cleanup implements.
+
+## Exceptions
+
+- **`FrameworkException`** — root unchecked exception; all others
+  extend it.
+- **`ConfigurationException`** — actively used throughout `config/`
+  (`ConfigReader`, `ConfigManager`, `CapabilityBuilder`,
+  `EnvironmentManager`, `UserDataReader`).
+- **`DriverInitializationException`** — actively used by
+  `DriverManager`, `AndroidDriverFactory`, and `BaseTest`.
+- **`PageOperationException`** — defined with the same message/cause
+  constructors as the others, but **not thrown anywhere yet**; no page
+  object currently raises it. Kept as-is per cleanup scope — a class
+  having few/no current usages is not, on its own, evidence it's
+  obsolete, and page-level failure handling is expected to grow into it.
+
+## Listeners
+
+- **`TestListener`** — implements `ITestListener`, registered in
+  `suites/testng.xml`, actively runs on every test.
+- **`RetryAnalyzer`** — empty class, does not implement TestNG's
+  `IRetryAnalyzer`, not referenced by any `@Test` annotation or listener.
+  No retry behavior currently exists.
+- **`AnnotationTransformer`** — empty class, does not implement TestNG's
+  `IAnnotationTransformer`, not registered in `suites/testng.xml`. No
+  annotation-transformation behavior currently exists.
 
 ## Framework Rules
 
@@ -253,20 +320,16 @@ Non-negotiable rules for all future implementation work in this
 framework:
 
 - Never use `Thread.sleep()`.
-- Always use `WaitUtils` (`utils/wait`) for synchronization.
+- Always wait via `BasePage`'s helpers (`click`/`enterText`/
+  `isDisplayed`, backed by `WebDriverWait`) for synchronization — there
+  is currently no separate `WaitUtils` class.
 - Every page extends `BasePage`.
 - Never instantiate `AndroidDriver`/`IOSDriver` directly.
-- Always obtain the driver through `DriverManager`.
+- Always obtain the driver through `DriverManager` (in `BaseTest`) or
+  the constructor-injected driver (in page objects).
 - Never hardcode APK paths.
 - Never hardcode environment values.
-- Never hardcode credentials.
-
-> `DriverSmokeTest` now resolves the Appium server URL, device name, and
-> APK path through the Configuration Layer (`ConfigManager` /
-> `CapabilityBuilder`) rather than hardcoding them. It remains a
-> throwaway verification test — not a pattern to follow — because it
-> performs driver setup/teardown manually instead of extending
-> `BaseTest`. See [ExecutionFlow.md](ExecutionFlow.md).
+- Never hardcode credentials — use `UserDataManager`.
 
 ## Locator Strategy
 

@@ -1,33 +1,33 @@
 # Execution Flow
 
-> Status: three flows are documented here. The first two — **Currently
-> Verified** — are real and have run successfully against a live Appium
-> server and emulator. The third — **Planned Full Framework Flow** — is
-> still target design; the pages/listeners/reports layers it describes
-> are not implemented yet.
+> Status (updated 2026-08-27): three test classes are currently
+> implemented and passing against a real Appium server and Android
+> emulator — `DriverSmokeTest`, `LoginTest`, and `DashboardTest` (see
+> **Currently Verified** below). Retry logic and the Extent/Allure
+> reporting managers are not implemented yet — see **Not Yet
+> Implemented** at the bottom of this document.
 
-## Currently Verified: Driver Smoke Test
+## Currently Verified: Full Test Suite
 
-`DriverSmokeTest` (`src/test/java/com/automation/mobile/tests/android/DriverSmokeTest.java`)
-is a temporary TestNG test that exercises the Configuration Layer and
-the Driver Layer end to end — no `BaseTest`/`BasePage`, no page objects
-involved (it performs the same setup `BaseTest` now centralizes, but
-manually, as its own verification that the layers wire together
-correctly). It has been run and passed against:
+All three classes registered in `suites/testng.xml` extend `BaseTest`
+and were run together via `mvn clean test` against:
 
 - Environment: `Environment.QA` (`src/test/resources/config/qa.properties`)
 - Appium server: `http://127.0.0.1:4723`
 - Device: `emulator-5554`
-- App: `apps/qa/qa.apk` (resolved via `ConfigManager.getAppPath()`) — the Kylas
-  Sales Android app, package `io.kylas.sales.droid.qa.debug`
+- App: `apps/qa/kylas-qa-debug.apk` (resolved via `ConfigManager.getAppPath()`) —
+  the Kylas Sales Android app, package `io.kylas.sales.droid.qa.debug`
 
-### Startup
+Result: `Tests run: 4, Failures: 0, Errors: 0, Skipped: 0` (`DriverSmokeTest`
+runs one `@Test` method; `LoginTest` runs two).
+
+### Startup (every test, via BaseTest)
 
 ```
-DriverSmokeTest
-      │  new ConfigManager(Environment.QA)
+BaseTest.setUp()  [@BeforeMethod]
+      │  EnvironmentManager.getEnvironment()  (defaults to QA)
       ▼
-ConfigManager  ──uses──►  ConfigReader (loads qa.properties)
+ConfigManager(environment)  ──uses──►  ConfigReader (loads {env}.properties)
       │
       ▼
 CapabilityBuilder.build()
@@ -49,17 +49,17 @@ UiAutomator2
 Android Emulator (emulator-5554)
       │  which launches
       ▼
-Kylas Sales Android app (apps/qa/qa.apk)
+Kylas Sales Android app (apps/qa/kylas-qa-debug.apk)
+      │
+      ▼
+DriverManager.setDriver(driver)
 ```
 
-The test then stores the driver via `DriverManager.setDriver(driver)`,
-asserts a non-null session ID and non-null current package (proving the
-app actually launched), and logs session ID, current package, and
-current activity.
-
-### Teardown
+### Teardown (every test, via BaseTest)
 
 ```
+BaseTest.tearDown()  [@AfterMethod(alwaysRun = true)]
+      ▼
 DriverManager.removeDriver()
       │
       ▼
@@ -69,84 +69,104 @@ DriverManager.removeDriver()
  finally { ThreadLocal.remove() }   — always runs, even if quit() throws
 ```
 
-### What this proves vs. what it doesn't
+### DriverSmokeTest
 
-This confirms `Environment` → `ConfigReader` → `ConfigManager` →
-`CapabilityBuilder` → `AndroidDriverFactory` → `AndroidDriver` →
-`DriverManager` work correctly together against a real environment. It
-does **not** exercise `BaseTest` (no test extends it yet), retries,
-reporting, or page objects — those don't exist yet or aren't wired in.
+Asserts a non-null session ID and non-null current package (proving the
+app actually launched), and logs session ID, current package, and
+current activity. It performs no page/UI interaction — it only exists
+to verify the Configuration + Driver layers wire together correctly.
 
-## Currently Verified: BaseTest (compiled, not yet exercised by a test)
+### LoginTest
 
-`BaseTest` (`src/main/java/com/automation/mobile/base/BaseTest.java`)
-implements the same setup/teardown flow as `DriverSmokeTest` above, but
-centralized behind TestNG's `@BeforeMethod`/`@AfterMethod` so future test
-classes get it just by extending `BaseTest`:
+Drives `LoginPage` directly (constructed with `getDriver()` from
+`BaseTest`) — it does not go through `LoginFlow`:
 
 ```
-@BeforeMethod setUp()
-      │  ConfigManager(Environment.QA) → CapabilityBuilder.build()
-      │  → new URL(appiumServerUrl)  [MalformedURLException → DriverInitializationException]
+LoginTest.verifyUserCanLoginSuccessfully()
+      │
       ▼
-AndroidDriverFactory.createDriver(url, capabilities)
+new LoginPage(getDriver())
+      │  enterEmail(validEmail) → enterPassword(validPassword) → clickSignIn()
       ▼
-DriverManager.setDriver(driver)
-
-(test body — via protected getDriver())
-
-@AfterMethod(alwaysRun = true) tearDown()
+new DashboardPage(getDriver())
+      │
       ▼
-DriverManager.removeDriver()
+assert dashboardPage.isDashboardDisplayed()
 ```
 
-It has been verified via `mvn clean test-compile` (compiles cleanly)
-and `mvn clean test` (build stays green; `DriverSmokeTest` still passes
-unmodified alongside it). No test class extends `BaseTest` yet —
-refactoring `DriverSmokeTest` to do so is the next step, at which point
-this section should be merged into "Currently Verified" above.
+```
+LoginTest.verifyUserCannotLoginWithInvalidCredentials()
+      │
+      ▼
+new LoginPage(getDriver())
+      │  enterEmail(invalidEmail) → enterPassword(invalidPassword) → clickSignIn()
+      ▼
+assert loginPage.isInvalidLoginMessageDisplayed()
+```
 
-## Planned Full Framework Flow
+Credentials come from `UserDataManager` → `UserDataReader` →
+`testdata/users.properties`.
 
-The sequence below is the target behavior once the remaining layers are
-built. It is not what `DriverSmokeTest` above does, and none of the
-config/base/listener/report classes it references have logic yet.
+### DashboardTest
 
-## Sequence for one test run
+Logs in via `LoginFlow` (unlike `LoginTest` — see
+[Architecture.md#known-duplication](Architecture.md#known-duplication)),
+then verifies tab navigation:
 
-1. **Suite start** — Surefire loads `suites/testng.xml`.
-   `listeners/AnnotationTransformer` registers, attaching
-   `listeners/RetryAnalyzer` to every `@Test` method.
-2. **Config resolution** — `BaseTest.setUp()` (`@BeforeMethod`, currently
-   fixed to `Environment.QA`) constructs `config/ConfigManager`, which
-   uses `config/ConfigReader` to load the appropriate
-   `src/test/resources/config/{qa,stag,prod}.properties` file. This part
-   is implemented — see
-   [Architecture.md](Architecture.md#configuration-layer--implemented).
-   A proper environment-selection mechanism (replacing the hardcoded
-   `QA`) is still to come.
-3. **Capability assembly** — `config/CapabilityBuilder.build()` turns
-   resolved config into the Appium capabilities map (implemented).
-4. **Driver creation** — `BaseTest.setUp()` builds the driver via
-   `driver/AndroidDriverFactory` directly and stores it with
-   `driver/DriverManager.setDriver(...)`; `IOSDriverFactory` support is
-   not wired in yet. Failures here raise
-   `exceptions/DriverInitializationException`.
-5. **Test execution** — the test class calls into `pages/` objects only.
-   Page objects pull the active driver from `DriverManager` and use
-   `utils/wait`, `utils/gesture`, etc. for interactions.
-6. **Per-test reporting** — `listeners/TestListener` observes
-   start/success/failure and forwards to both
-   `reports/ExtentReportManager` and `reports/AllureManager`. On
-   failure, `utils/screenshot` captures the screen and attaches it to
-   both reports.
-7. **Retry (on failure)** — `listeners/RetryAnalyzer` decides whether to
-   re-run the failed method before it's reported as a final failure.
-8. **Driver teardown** — after each test (or suite, depending on the
-   configured driver scope), `DriverManager` quits the session.
-9. **Suite end** — `reports/ExtentReportManager` flushes the HTML
-   report; Allure results are written to `allure-results/` for
-   `allure serve`/`allure generate`.
+```
+DashboardTest.verifyDashboardTabs()
+      │
+      ▼
+new LoginFlow(getDriver()).loginAsValidUser()
+      │  internally: new LoginPage(driver) → enterEmail/enterPassword/clickSignIn
+      ▼
+DashboardPage
+      │
+      ▼
+assert isDashboardDisplayed()
+      │
+      ▼
+clickDashboardTab() → assert isDashboardTabSelected()
+      │
+      ▼
+clickUpcomingMeetings() → assert isUpcomingMeetingsTabSelected()
+      │
+      ▼
+clickUpcomingTasks() → assert isUpcomingTasksTabSelected()
+```
+
+### Failure handling (all tests)
+
+`TestListener` (registered in `suites/testng.xml`) observes every test:
+
+```
+Test fails
+      │
+      ▼
+TestListener.onTestFailure(result)
+      │  logs failure reason, then
+      ▼
+ScreenshotUtil.takeScreenshot(DriverManager.getDriver(), testName)
+      │
+      ▼
+target/screenshots/{testName}_{timestamp}.png
+```
+
+## Not Yet Implemented
+
+- **Retry on failure** — `RetryAnalyzer` is an empty class; it is not
+  wired to any `@Test` (no `retryAnalyzer = ...` attribute is set, and
+  `AnnotationTransformer` — which would apply it framework-wide — is
+  also empty and unregistered). A failed test fails once, with no retry.
+- **Extent/Allure reporting** — `ExtentReportManager` and
+  `AllureManager` are both empty classes; `TestListener` does not call
+  either. The `allure-testng` Maven dependency still collects raw
+  results independently of these classes, but no ExtentReports HTML
+  dashboard is produced and no extra Allure enrichment (e.g. attaching
+  the failure screenshot to the Allure report itself) happens.
+- **iOS execution** — `IOSDriverFactory` throws
+  `UnsupportedOperationException`; `pages/ios` is empty; `tests/ios` is
+  empty.
 
 ## Failure Propagation
 
@@ -154,18 +174,22 @@ config/base/listener/report classes it references have logic yet.
 Config/Driver/Page failure
         │
         ▼
- exceptions/* (Configuration|DriverInitialization|PageOperation)Exception
-        │
+ exceptions/* (Configuration|DriverInitialization)Exception
+        │        (PageOperationException is defined but not yet thrown
+        │         by any page object)
         ▼
  TestNG marks test failed ──► listeners/TestListener
         │                              │
         ▼                              ▼
- RetryAnalyzer (retry?)      reports/{Extent,Allure}Manager (record + screenshot)
+ (no retry — RetryAnalyzer is    utils/screenshot/ScreenshotUtil
+  empty/unwired)                  (captures + saves screenshot)
 ```
 
 ## Parallel Execution
 
-`DriverManager` is expected to hold the active driver per-thread (not
-static/shared) so TestNG's suite-level `parallel="methods"`/`"classes"`
-execution is safe once implemented — each thread gets its own driver
-session from its own `DriverFactory` call.
+`DriverManager` holds the active driver per-thread (`ThreadLocal`, not
+static/shared), so TestNG's suite-level `parallel="methods"`/`"classes"`
+execution would be safe if enabled — each thread would get its own
+driver session from its own `AndroidDriverFactory` call. `suites/testng.xml`
+does not currently set a `parallel` attribute, so the suite runs
+sequentially today.

@@ -48,6 +48,10 @@ public class ConfigManager {
         return get("appiumServerUrl");
     }
 
+    public String getAppPackage() {
+        return get("appPackage");
+    }
+
     public boolean getGrantPermission() {
         String value = get("autoGrantPermissions");
 
