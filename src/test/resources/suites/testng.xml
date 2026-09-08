@@ -15,6 +15,9 @@
             <class name="com.automation.mobile.tests.android.DriverSmokeTest"/>
             <class name="com.automation.mobile.tests.android.LoginTest"/>
             <class name="com.automation.mobile.tests.android.DashboardTest"/>
+            <class name="com.automation.mobile.tests.android.HomeTest"/>
+
+
         </classes>
     </test>
 

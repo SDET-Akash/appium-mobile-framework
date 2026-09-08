@@ -1,8 +1,7 @@
 package com.automation.mobile.tests.android;
 
 import com.automation.mobile.base.BaseTest;
-
-import com.automation.mobile.config.UserDataManager;
+import com.automation.mobile.flows.LoginFlow;
 import com.automation.mobile.pages.android.DashboardPage;
 import com.automation.mobile.pages.android.LoginPage;
 import org.testng.Assert;
@@ -10,19 +9,12 @@ import org.testng.annotations.Test;
 
 public class LoginTest extends BaseTest {
 
-    private final UserDataManager userDataManager = new UserDataManager();
-
     @Test
     public void verifyUserCanLoginSuccessfully() {
 
-        LoginPage loginPage = new LoginPage(getDriver());
+        LoginFlow loginFlow = new LoginFlow(getDriver());
 
-        loginPage
-                .enterEmail(userDataManager.getValidUserEmail())
-                .enterPassword(userDataManager.getValidUserPassword())
-                .clickSignIn();
-
-        DashboardPage dashboardPage = new DashboardPage(getDriver());
+        DashboardPage dashboardPage = loginFlow.loginAsValidUser();
 
         Assert.assertTrue(
                 dashboardPage.isDashboardDisplayed(),
@@ -33,12 +25,9 @@ public class LoginTest extends BaseTest {
     @Test
     public void verifyUserCannotLoginWithInvalidCredentials() {
 
-        LoginPage loginPage = new LoginPage(getDriver());
+        LoginFlow loginFlow = new LoginFlow(getDriver());
 
-        loginPage
-                .enterEmail(userDataManager.getInvalidUserEmail())
-                .enterPassword(userDataManager.getInvalidUserPassword())
-                .clickSignIn();
+        LoginPage loginPage = loginFlow.loginAsInvalidUser();
 
         Assert.assertTrue(
                 loginPage.isInvalidLoginMessageDisplayed(),

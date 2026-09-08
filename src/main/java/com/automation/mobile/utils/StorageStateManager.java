@@ -1,6 +1,7 @@
 package com.automation.mobile.utils;
 
 import com.automation.mobile.config.ConfigManager;
+import com.automation.mobile.config.Environment;
 import com.automation.mobile.exceptions.ConfigurationException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -9,6 +10,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+
+import static com.automation.mobile.config.Environment.PROD;
 
 /**
  * Manages restoration of an authenticated Android application state.
@@ -21,8 +24,8 @@ public final class StorageStateManager {
     private static final Logger LOGGER =
             LogManager.getLogger(StorageStateManager.class);
 
-    private static final String STORAGE_STATE_RESOURCE =
-            "qa/storageStates/user.xml";
+//    private static final String STORAGE_STATE_RESOURCE =
+//            "qa/storageStates/user.xml";
 
     private static final String SHARED_PREFERENCES_PATH =
             "shared_prefs/FlutterSharedPreferences.xml";
@@ -50,7 +53,8 @@ public final class StorageStateManager {
                 appPackage
         );
 
-        Path storageState = resolveStorageState();
+        Path storageState =
+                resolveStorageState(configManager.getEnvironment());
 
         if (!Files.isRegularFile(storageState)) {
             throw new ConfigurationException(
@@ -71,17 +75,43 @@ public final class StorageStateManager {
      *
      * @return absolute path to the storage-state file
      */
-    private static Path resolveStorageState() {
+    private static Path resolveStorageState(
+            Environment environment
+    ) {
+
+        String storageStateResource;
+
+        switch (environment) {
+            case QA:
+                storageStateResource =
+                        "qa/storageStates/user.xml";
+                break;
+
+            case STAG:
+                storageStateResource =
+                        "stage/storageStates/user.xml";
+                break;
+
+            case PROD:
+                throw new ConfigurationException(
+                        "Storage state is not configured for PROD"
+                );
+
+            default:
+                throw new ConfigurationException(
+                        "Unsupported environment: " + environment
+                );
+        }
 
         try {
             var resource = StorageStateManager.class
                     .getClassLoader()
-                    .getResource(STORAGE_STATE_RESOURCE);
+                    .getResource(storageStateResource);
 
             if (resource == null) {
                 throw new ConfigurationException(
                         "Storage state file not found on classpath: "
-                                + STORAGE_STATE_RESOURCE
+                                + storageStateResource
                 );
             }
 
@@ -90,7 +120,7 @@ public final class StorageStateManager {
         } catch (Exception e) {
             throw new ConfigurationException(
                     "Failed to resolve storage state: "
-                            + STORAGE_STATE_RESOURCE,
+                            + storageStateResource,
                     e
             );
         }

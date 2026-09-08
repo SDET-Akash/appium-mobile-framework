@@ -17,8 +17,10 @@ import java.nio.file.Paths;
 public class ConfigManager {
 
     private final ConfigReader configReader;
+    private final Environment environment;
 
     public ConfigManager(Environment environment) {
+        this.environment = environment;
         this.configReader = new ConfigReader(environment);
     }
 
@@ -30,6 +32,9 @@ public class ConfigManager {
      */
     public String get(String key) {
         return configReader.get(key);
+    }
+    public Environment getEnvironment() {
+        return environment;
     }
 
     public String getPlatform() {

@@ -8,6 +8,7 @@ public final class EnvironmentManager {
     private static final String DEFAULT_ENVIRONMENT = "qa";
 
     private EnvironmentManager() {
+        // Utility class
     }
 
     public static Environment getEnvironment() {
@@ -17,7 +18,9 @@ public final class EnvironmentManager {
 
         try {
             return Environment.valueOf(environment.toUpperCase());
+
         } catch (IllegalArgumentException e) {
+
             throw new ConfigurationException(
                     "Invalid environment: " + environment
                             + ". Supported environments: QA, STAG, PROD",

@@ -4,8 +4,8 @@ public class UserDataManager {
 
     private final UserDataReader userDataReader;
 
-    public UserDataManager() {
-        this.userDataReader = new UserDataReader();
+    public UserDataManager(Environment environment) {
+        this.userDataReader = new UserDataReader(environment);
     }
 
     public String getValidUserEmail() {
@@ -16,7 +16,7 @@ public class UserDataManager {
         return userDataReader.get("validUserPassword");
     }
 
-    public String getInvalidUserEmail(){
+    public String getInvalidUserEmail() {
         return userDataReader.get("invalidUserEmail");
     }
 

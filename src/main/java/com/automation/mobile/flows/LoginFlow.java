@@ -1,5 +1,6 @@
 package com.automation.mobile.flows;
 
+import com.automation.mobile.config.ConfigReader;
 import com.automation.mobile.config.UserDataManager;
 import com.automation.mobile.pages.android.DashboardPage;
 import com.automation.mobile.pages.android.LoginPage;
@@ -16,7 +17,8 @@ public class LoginFlow {
 
     public LoginFlow(AndroidDriver driver) {
         this.driver = driver;
-        this.userDataManager = new UserDataManager();
+        this.userDataManager =
+                new UserDataManager(ConfigReader.getEnvironment());
     }
 
     public DashboardPage loginAsValidUser() {
@@ -33,5 +35,21 @@ public class LoginFlow {
         LOGGER.info("Valid user login flow completed");
 
         return new DashboardPage(driver);
+    }
+
+    public LoginPage loginAsInvalidUser() {
+
+        LOGGER.info("Starting invalid user login flow");
+
+        LoginPage loginPage = new LoginPage(driver);
+
+        loginPage
+                .enterEmail(userDataManager.getInvalidUserEmail())
+                .enterPassword(userDataManager.getInvalidUserPassword())
+                .clickSignIn();
+
+        LOGGER.info("Invalid user login flow completed");
+
+        return loginPage;
     }
 }
