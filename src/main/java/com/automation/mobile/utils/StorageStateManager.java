@@ -127,6 +127,52 @@ public final class StorageStateManager {
     }
 
     /**
+     * Deterministically resets the application to a clean, logged-out state.
+     *
+     * <p>Removes only the authentication preferences file rather than
+     * running {@code pm clear}. {@code pm clear} was tried and rejected:
+     * on this device it also revokes every runtime permission grant
+     * (confirmed via {@code dumpsys package}, e.g. POST_NOTIFICATIONS
+     * granted=true before, granted=false immediately after), which brings
+     * back the OS notification-permission dialog and blocks the whole
+     * screen on the next launch. Deleting just the preferences file the
+     * app reads its session from achieves the same logged-out state
+     * without touching permissions.</p>
+     *
+     * @param configManager framework configuration
+     */
+    public static void clear(ConfigManager configManager) {
+
+        if (configManager == null) {
+            throw new ConfigurationException(
+                    "ConfigManager must not be null"
+            );
+        }
+
+        String appPackage = configManager.getAppPackage();
+
+        LOGGER.info(
+                "Clearing authentication preferences for a clean, unauthenticated state: {}",
+                appPackage
+        );
+
+        stopApplication(appPackage);
+
+        executeAdb(
+                "shell",
+                "run-as",
+                appPackage,
+                "rm",
+                "-f",
+                SHARED_PREFERENCES_PATH
+        );
+
+        LOGGER.info(
+                "Authentication preferences cleared successfully"
+        );
+    }
+
+    /**
      * Stops the application before modifying its preferences.
      */
     private static void stopApplication(String appPackage) {
@@ -165,6 +211,19 @@ public final class StorageStateManager {
                 "push",
                 storageState.toString(),
                 tempFile
+        );
+
+        LOGGER.debug(
+                "Ensuring application preferences directory exists"
+        );
+
+        executeAdb(
+                "shell",
+                "run-as",
+                appPackage,
+                "mkdir",
+                "-p",
+                "shared_prefs"
         );
 
         LOGGER.debug(

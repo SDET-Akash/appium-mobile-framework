@@ -44,6 +44,17 @@ public class CapabilityBuilder {
         capabilities.put("deviceName", deviceName);
         capabilities.put("autoGrantPermissions", permission);
         capabilities.put("enforceAppInstall", enforceInstall);
+        // The framework performs its own deterministic, synchronous app
+        // reset (StorageStateManager.clear()/restore()) after the driver
+        // session is created. Appium's own noReset=false reset runs
+        // asynchronously relative to session creation returning, and racing
+        // it against our own reset corrupts app state (confirmed via
+        // logcat: concurrent "clear data" events followed by an Activity
+        // pause/resume timeout). noReset=true disables that automatic
+        // reset so our own reset is the single source of truth.
+//        capabilities.put("noReset", true);
+//        capabilities.put("autoLaunch", false);
+
 
         if (appPath != null && !appPath.trim().isEmpty()) {
             capabilities.put("app", appPath);

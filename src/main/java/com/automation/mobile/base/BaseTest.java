@@ -7,6 +7,7 @@ import com.automation.mobile.config.EnvironmentManager;
 import com.automation.mobile.driver.AndroidDriverFactory;
 import com.automation.mobile.driver.DriverManager;
 import com.automation.mobile.exceptions.DriverInitializationException;
+import com.automation.mobile.utils.StorageStateManager;
 import io.appium.java_client.android.AndroidDriver;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -83,7 +84,17 @@ public class BaseTest {
      * @param configManager configuration for the current environment
      */
     protected void afterDriverSetup(ConfigManager configManager) {
-        // Default implementation requires no additional setup.
+
+        StorageStateManager.clear(configManager);
+
+        String appPackage = configManager.getAppPackage();
+
+        LOGGER.info(
+                "Launching application: {}",
+                appPackage
+        );
+
+        getDriver().activateApp(appPackage);
     }
 
     @AfterMethod(alwaysRun = true)

@@ -4,6 +4,7 @@ import io.appium.java_client.android.AndroidDriver;
 import io.appium.java_client.pagefactory.AppiumFieldDecorator;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.openqa.selenium.StaleElementReferenceException;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.PageFactory;
 import org.openqa.selenium.support.ui.ExpectedConditions;
@@ -43,6 +44,20 @@ public class BasePage {
 
     protected void click(WebElement element) {
 
+        try {
+            clickOnce(element);
+        } catch (StaleElementReferenceException e) {
+            // The underlying node can be torn down and rebuilt in the
+            // instant between the clickable-wait resolving and the click
+            // itself (seen right after a fresh app launch is still
+            // settling its UI). Retry once against a freshly located node.
+            LOGGER.debug("Element went stale before click; retrying once");
+            clickOnce(element);
+        }
+    }
+
+    private void clickOnce(WebElement element) {
+
         LOGGER.debug("Waiting for element to be clickable");
 
         wait.until(
@@ -54,7 +69,39 @@ public class BasePage {
         element.click();
     }
 
+    protected boolean waitForAttribute(
+            WebElement element,
+            String attribute,
+            String value) {
+
+        LOGGER.debug(
+                "Waiting for attribute {} to have value {}",
+                attribute,
+                value
+        );
+
+        wait.until(
+                ExpectedConditions.attributeToBe(
+                        element,
+                        attribute,
+                        value
+                )
+        );
+
+        return true;
+    }
+
     protected void enterText(WebElement element, String text) {
+
+        try {
+            enterTextOnce(element, text);
+        } catch (StaleElementReferenceException e) {
+            LOGGER.debug("Element went stale before text entry; retrying once");
+            enterTextOnce(element, text);
+        }
+    }
+
+    private void enterTextOnce(WebElement element, String text) {
 
         LOGGER.debug("Waiting for element to be visible");
 

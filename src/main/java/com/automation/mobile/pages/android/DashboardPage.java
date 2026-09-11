@@ -27,6 +27,7 @@ public class DashboardPage extends BasePage {
     }
 
     public boolean isDashboardDisplayed() {
+
         return isDisplayed(dashboardName);
     }
 
@@ -36,7 +37,7 @@ public class DashboardPage extends BasePage {
     }
 
     public boolean isDashboardTabSelected() {
-        return "true".equals(dashboardTab.getAttribute("selected"));
+        return waitForTabSelected(dashboardTab);
     }
 
     public DashboardPage clickUpcomingMeetings() {
@@ -45,9 +46,7 @@ public class DashboardPage extends BasePage {
     }
 
     public boolean isUpcomingMeetingsTabSelected() {
-        return "true".equals(
-                upcomingMeetingsTab.getAttribute("selected")
-        );
+        return waitForTabSelected(upcomingMeetingsTab);
     }
 
     public DashboardPage clickUpcomingTasks() {
@@ -56,12 +55,29 @@ public class DashboardPage extends BasePage {
     }
 
     public boolean isUpcomingTasksTabSelected() {
-        return "true".equals(
-                upcomingTasksTab.getAttribute("selected")
-        );
+        return waitForTabSelected(upcomingTasksTab);
     }
 
     public boolean isOwnerDisplayed() {
         return isDisplayed(ownerText);
+    }
+
+    /**
+     * Waits for a bottom-nav tab to report {@code selected=true}.
+     *
+     * <p>The preceding tab switch can still be loading/rendering its own
+     * content when the next tab is tapped, and the tap is occasionally
+     * dropped as a result (confirmed via page-source captures showing the
+     * previous tab still selected and the new tab's content never loaded).
+     * A single retry click, driven by the same "selected" condition rather
+     * than a fixed delay, recovers from that dropped tap deterministically.</p>
+     */
+    private boolean waitForTabSelected(WebElement tab) {
+        try {
+            return waitForAttribute(tab, "selected", "true");
+        } catch (RuntimeException firstAttemptFailed) {
+            click(tab);
+            return waitForAttribute(tab, "selected", "true");
+        }
     }
 }
