@@ -13,6 +13,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.BeforeSuite;
 
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -35,6 +36,24 @@ public class BaseTest {
     private static final Logger LOGGER =
             LogManager.getLogger(BaseTest.class);
 
+    /**
+     * Refreshes the authentication storage state once per suite run,
+     * before any test's {@link #setUp()} executes, by performing one
+     * real login and capturing the resulting session. This guarantees
+     * {@link AuthenticatedBaseTest}-based tests always restore a fresh
+     * session instead of a static file that can silently go stale.
+     *
+     * <p>TestNG runs a {@code @BeforeSuite} method exactly once per
+     * suite regardless of how many classes inherit it. If this fails,
+     * TestNG skips every test in the suite with this method's failure
+     * attached as the reason, rather than letting each authenticated
+     * test fail individually against a broken storage state.</p>
+     */
+    @BeforeSuite(alwaysRun = true)
+    public void refreshStorageState() {
+        StorageStateRefresher.refresh();
+    }
+
     @BeforeMethod
     public void setUp() {
 
@@ -49,6 +68,27 @@ public class BaseTest {
         ConfigManager configManager =
                 new ConfigManager(environment);
 
+        AndroidDriver driver =
+                createAndroidDriver(configManager);
+
+        DriverManager.setDriver(driver);
+
+        LOGGER.info("Android driver session ready");
+
+        afterDriverSetup(configManager);
+    }
+
+    /**
+     * Builds capabilities and creates a new Android driver session for
+     * the given configuration. Shared by the per-test {@link #setUp()}
+     * lifecycle and {@link StorageStateRefresher}, which needs its own
+     * driver session outside the normal per-method lifecycle.
+     *
+     * @param configManager configuration for the current environment
+     * @return a newly created Android driver session
+     */
+    static AndroidDriver createAndroidDriver(ConfigManager configManager) {
+
         CapabilityBuilder capabilityBuilder =
                 new CapabilityBuilder(configManager);
 
@@ -61,17 +101,10 @@ public class BaseTest {
         AndroidDriverFactory androidDriverFactory =
                 new AndroidDriverFactory();
 
-        AndroidDriver driver =
-                androidDriverFactory.createDriver(
-                        appiumServerUrl,
-                        capabilities
-                );
-
-        DriverManager.setDriver(driver);
-
-        LOGGER.info("Android driver session ready");
-
-        afterDriverSetup(configManager);
+        return androidDriverFactory.createDriver(
+                appiumServerUrl,
+                capabilities
+        );
     }
 
     /**

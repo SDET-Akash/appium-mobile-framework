@@ -71,6 +71,43 @@ public final class StorageStateManager {
     }
 
     /**
+     * Captures the application's live, currently-authenticated
+     * FlutterSharedPreferences.xml from the device and overwrites the
+     * configured storage-state file with it.
+     *
+     * <p>Used to refresh the storage state from a real login rather than
+     * relying on a static file that eventually goes stale (expired
+     * tokens producing an in-app error screen on restore).</p>
+     *
+     * @param configManager framework configuration
+     */
+    public static void capture(ConfigManager configManager) {
+
+        if (configManager == null) {
+            throw new ConfigurationException(
+                    "ConfigManager must not be null"
+            );
+        }
+
+        String appPackage = configManager.getAppPackage();
+
+        LOGGER.info(
+                "Capturing live authentication storage state for application: {}",
+                appPackage
+        );
+
+        Path storageState =
+                resolveStorageState(configManager.getEnvironment());
+
+        pullPreferences(appPackage, storageState);
+
+        LOGGER.info(
+                "Authentication storage state captured successfully: {}",
+                storageState
+        );
+    }
+
+    /**
      * Resolves the storage state from the test classpath.
      *
      * @return absolute path to the storage-state file
@@ -251,9 +288,68 @@ public final class StorageStateManager {
     }
 
     /**
+     * Reads the application's live SharedPreferences file via run-as and
+     * writes it to the given destination on the host.
+     */
+    private static void pullPreferences(
+            String appPackage,
+            Path destination
+    ) {
+
+        LOGGER.debug(
+                "Pulling live application preferences via run-as"
+        );
+
+        String output = executeAdbCapturingOutput(
+                "shell",
+                "run-as",
+                appPackage,
+                "cat",
+                SHARED_PREFERENCES_PATH
+        );
+
+        if (output == null
+                || output.isBlank()
+                || !output.trim().startsWith("<?xml")) {
+
+            throw new ConfigurationException(
+                    "Captured preferences do not look like a valid "
+                            + "FlutterSharedPreferences.xml file. The "
+                            + "application may not be logged in, or the "
+                            + "run-as read failed. Raw output: "
+                            + output
+            );
+        }
+
+        try {
+            Files.writeString(destination, output, StandardCharsets.UTF_8);
+
+        } catch (IOException e) {
+            throw new ConfigurationException(
+                    "Failed to write captured storage state to: "
+                            + destination,
+                    e
+            );
+        }
+    }
+
+    /**
      * Executes an adb command and fails when the command is unsuccessful.
      */
     private static void executeAdb(String... arguments) {
+        runAdb(arguments);
+    }
+
+    /**
+     * Executes an adb command and returns its captured stdout, for
+     * commands whose output is the data we actually want (e.g. reading a
+     * file via {@code run-as cat}).
+     */
+    private static String executeAdbCapturingOutput(String... arguments) {
+        return runAdb(arguments);
+    }
+
+    private static String runAdb(String... arguments) {
 
         ProcessBuilder processBuilder =
                 new ProcessBuilder(buildAdbCommand(arguments));
@@ -278,6 +374,8 @@ public final class StorageStateManager {
                                 + output
                 );
             }
+
+            return output;
 
         } catch (IOException e) {
             throw new ConfigurationException(

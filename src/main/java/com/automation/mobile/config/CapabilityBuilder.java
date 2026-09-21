@@ -52,8 +52,8 @@ public class CapabilityBuilder {
         // logcat: concurrent "clear data" events followed by an Activity
         // pause/resume timeout). noReset=true disables that automatic
         // reset so our own reset is the single source of truth.
-//        capabilities.put("noReset", true);
-//        capabilities.put("autoLaunch", false);
+        capabilities.put("noReset", true);
+        capabilities.put("autoLaunch", false);
 
 
         if (appPath != null && !appPath.trim().isEmpty()) {
