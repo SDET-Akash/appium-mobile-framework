@@ -54,6 +54,11 @@ public class CapabilityBuilder {
         // reset so our own reset is the single source of truth.
         capabilities.put("noReset", true);
         capabilities.put("autoLaunch", false);
+        // shouldTerminateApp defaults to false when noReset=true, leaving
+        // the app under test running on-device after driver.quit(). Set
+        // explicitly so session teardown still kills the app regardless
+        // of noReset.
+        capabilities.put("shouldTerminateApp", true);
 
 
         if (appPath != null && !appPath.trim().isEmpty()) {
