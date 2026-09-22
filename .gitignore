@@ -31,6 +31,9 @@ logs/*.log
 logs/*.log.gz
 !logs/.gitkeep
 
+# Root-level ad-hoc log captures (e.g. manual adb logcat redirects)
+/*.log
+
 # ------------------------------------------------------------------
 # Reports (regenerated on every run)
 # ------------------------------------------------------------------
@@ -62,3 +65,13 @@ builds/**/*.ipa
 # ------------------------------------------------------------------
 .env
 *.local.properties
+
+# ------------------------------------------------------------------
+# Generated authentication storage state (see StorageStateManager —
+# now generated under target/generated-test-resources on every suite
+# run, already covered by the top-level target/ rule above). These
+# entries guard the old src/test/resources location against ever
+# being repopulated, and cover any manual backups made there.
+# ------------------------------------------------------------------
+src/test/resources/**/storageStates/user.xml
+src/test/resources/**/storageStates/*.bak*
