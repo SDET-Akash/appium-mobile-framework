@@ -1,4 +1,5 @@
 package com.automation.mobile.listeners;
+import com.automation.mobile.reports.AllureManager;
 import com.automation.mobile.utils.screenshot.ScreenshotUtil;
 import com.automation.mobile.driver.DriverManager;
 import org.apache.logging.log4j.LogManager;
@@ -54,6 +55,11 @@ public class TestListener implements ITestListener {
                 LOGGER.error(
                         "Failure screenshot: {}",
                         screenshotPath
+                );
+
+                AllureManager.attachScreenshot(
+                        screenshotPath,
+                        result.getName()
                 );
             }
 

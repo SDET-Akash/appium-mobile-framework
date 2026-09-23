@@ -20,7 +20,7 @@ public class HomePage extends BasePage {
     @AndroidFindBy(
             uiAutomator = "new UiSelector().resourceIdMatches(\".*:id/nav_drawer_nav_lead_list_item\")"
     )
-    private WebElement prospectsMenu;
+    private WebElement leadsMenu;
 
     @AndroidFindBy(
             uiAutomator = "new UiSelector().resourceIdMatches(\".*:id/nav_drawer_nav_contact_list_item\")"
@@ -69,9 +69,10 @@ public class HomePage extends BasePage {
         return isDisplayed(dashboardMenu);
     }
 
-    public void navigateToLeads() {
+    public LeadPage navigateToLeads() {
         openNavigationDrawer();
-        click(prospectsMenu);
+        click(leadsMenu);
+        return new LeadPage(driver);
     }
 
     public void navigateToContacts() {
@@ -104,10 +105,8 @@ public class HomePage extends BasePage {
         click(meetingsMenu);
     }
 
-
-
     public boolean isLeadsMenuDisplayed() {
-        return isDisplayed(prospectsMenu);
+        return isDisplayed(leadsMenu);
     }
 
     public boolean isContactsMenuDisplayed() {

@@ -108,24 +108,42 @@ public final class StorageStateManager {
     }
 
     /**
-     * Resolves the storage state from the test classpath.
+     * Resolves the storage-state file path under the project's generated
+     * test resources directory ({@code target/generated-test-resources}).
      *
-     * @return absolute path to the storage-state file
+     * <p>The storage state is fully generated on every suite run (see
+     * {@link #capture(ConfigManager)} and {@code StorageStateRefresher}),
+     * never hand-edited, so it belongs under {@code target/} like any
+     * other build-generated artifact rather than under
+     * {@code src/test/resources} — this keeps it out of version control
+     * without relying on a {@code .gitignore} rule for a file sitting in
+     * the source tree, and lets {@code mvn clean} purge it naturally.</p>
+     *
+     * <p>Resolved by direct filesystem construction rather than via
+     * {@code ClassLoader.getResource()}, so the path is available even
+     * when the file does not exist yet (e.g. a clean checkout, before
+     * {@link #capture(ConfigManager)} has ever run). {@code user.dir} is
+     * the project's base directory under both Maven Surefire (the
+     * default, unless overridden) and an IDE's default test run
+     * configuration.</p>
+     *
+     * @return absolute path to the storage-state file, whether or not it
+     * currently exists
      */
     private static Path resolveStorageState(
             Environment environment
     ) {
 
-        String storageStateResource;
+        String relativePath;
 
         switch (environment) {
             case QA:
-                storageStateResource =
+                relativePath =
                         "qa/storageStates/user.xml";
                 break;
 
             case STAG:
-                storageStateResource =
+                relativePath =
                         "stage/storageStates/user.xml";
                 break;
 
@@ -140,27 +158,20 @@ public final class StorageStateManager {
                 );
         }
 
-        try {
-            var resource = StorageStateManager.class
-                    .getClassLoader()
-                    .getResource(storageStateResource);
+        Path generatedTestResourcesRoot = Path.of(
+                System.getProperty("user.dir"),
+                "target", "generated-test-resources"
+        );
 
-            if (resource == null) {
-                throw new ConfigurationException(
-                        "Storage state file not found on classpath: "
-                                + storageStateResource
-                );
-            }
+        Path resolved = generatedTestResourcesRoot.resolve(relativePath);
 
-            return Path.of(resource.toURI());
+        LOGGER.debug(
+                "Resolved storage state path for environment {}: {}",
+                environment,
+                resolved
+        );
 
-        } catch (Exception e) {
-            throw new ConfigurationException(
-                    "Failed to resolve storage state: "
-                            + storageStateResource,
-                    e
-            );
-        }
+        return resolved;
     }
 
     /**
@@ -322,6 +333,7 @@ public final class StorageStateManager {
         }
 
         try {
+            Files.createDirectories(destination.getParent());
             Files.writeString(destination, output, StandardCharsets.UTF_8);
 
         } catch (IOException e) {

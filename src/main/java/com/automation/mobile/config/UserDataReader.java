@@ -4,8 +4,23 @@ import com.automation.mobile.exceptions.ConfigurationException;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Properties;
 
+/**
+ * Loads real login credentials from the environment-specific,
+ * untracked {@code .env.<environment>} file at the project root (e.g.
+ * {@code .env.qa}, {@code .env.stag}) — the sole, authoritative source
+ * for credential values.
+ * <p>
+ * There is no fallback to the tracked {@code testdata/*.properties}
+ * files: those hold only dummy placeholder values for documentation
+ * purposes and are never read here. A missing {@code .env} file, a
+ * missing key, or a blank value all fail loudly via {@link
+ * ConfigurationException} rather than silently substituting a
+ * placeholder.
+ */
 public class UserDataReader {
 
     private final Properties properties = new Properties();
@@ -16,26 +31,27 @@ public class UserDataReader {
 
     private void loadProperties(Environment environment) {
 
-        String resourceName =
-                "testdata/" + environment.name().toLowerCase() + ".properties";
+        Path envFile = Path.of(
+                System.getProperty("user.dir"),
+                ".env." + environment.name().toLowerCase()
+        );
 
-        try (InputStream inputStream =
-                     getClass().getClassLoader()
-                             .getResourceAsStream(resourceName)) {
+        if (!Files.isRegularFile(envFile)) {
+            throw new ConfigurationException(
+                    "Credential file not found: " + envFile
+                            + ". Create it locally at the project root with "
+                            + "the required validUserEmail/validUserPassword/"
+                            + "invalidUserEmail/invalidUserPassword keys "
+                            + "before running authenticated tests."
+            );
+        }
 
-            if (inputStream == null) {
-                throw new ConfigurationException(
-                        "User data file not found on classpath: "
-                                + resourceName
-                );
-            }
-
+        try (InputStream inputStream = Files.newInputStream(envFile)) {
             properties.load(inputStream);
 
         } catch (IOException e) {
             throw new ConfigurationException(
-                    "Failed to load user data file: "
-                            + resourceName,
+                    "Failed to load credential file: " + envFile,
                     e
             );
         }
@@ -47,7 +63,10 @@ public class UserDataReader {
 
         if (value == null || value.trim().isEmpty()) {
             throw new ConfigurationException(
-                    "User data value is missing or blank for key: " + key
+                    "Required credential is missing or blank for key: '"
+                            + key
+                            + "'. Check the .env.<environment> file at the "
+                            + "project root."
             );
         }
 

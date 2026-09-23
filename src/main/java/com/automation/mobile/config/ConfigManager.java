@@ -2,9 +2,7 @@ package com.automation.mobile.config;
 
 import com.automation.mobile.exceptions.ConfigurationException;
 
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -84,13 +82,20 @@ public class ConfigManager {
     /**
      * Resolves the configured APK location to an absolute filesystem path.
      * <p>
-     * {@code appPath} is stored as a classpath-relative resource (e.g.
-     * {@code apps/qa/qa.apk}) so the properties files stay machine-agnostic.
-     * If the environment's app path has not yet been confirmed, this returns
-     * the blank value from the properties file rather than substituting a
-     * default/fake path.
+     * {@code appPath} is stored relative to the project's test resources
+     * directory (e.g. {@code apps/qa/qa-debug.apk}) so the properties
+     * files stay machine-agnostic. Resolved by direct filesystem
+     * construction relative to the project's base directory
+     * ({@code user.dir} — the default working directory under both
+     * Maven Surefire and an IDE's default test run configuration)
+     * rather than classloader resource lookup, so resolution doesn't
+     * depend on the APK already having been copied onto the classpath.
+     * If the environment's app path has not yet been confirmed, this
+     * returns the blank value from the properties file rather than
+     * substituting a default/fake path.
      *
-     * @throws ConfigurationException if a non-blank appPath cannot be found on the classpath
+     * @throws ConfigurationException if a non-blank appPath does not
+     * resolve to an existing regular file
      */
     public String getAppPath() {
         String appPath = get("appPath");
@@ -98,20 +103,20 @@ public class ConfigManager {
             return appPath;
         }
 
-        URL resource = getClass().getClassLoader().getResource(appPath);
-        if (resource == null) {
-            throw new ConfigurationException("Configured appPath resource not found on classpath: " + appPath);
+        Path testResourcesRoot = Paths.get(
+                System.getProperty("user.dir"),
+                "src", "test", "resources"
+        );
+
+        Path resolvedPath = testResourcesRoot.resolve(appPath);
+
+        if (!Files.isRegularFile(resolvedPath)) {
+            throw new ConfigurationException(
+                    "Configured appPath does not exist or is not a regular file: "
+                            + resolvedPath
+            );
         }
 
-        Path resolvedPath = Paths.get(toUri(resource));
         return resolvedPath.toAbsolutePath().toString();
-    }
-
-    private static URI toUri(URL resource) {
-        try {
-            return resource.toURI();
-        } catch (URISyntaxException e) {
-            throw new ConfigurationException("Failed to resolve classpath resource URL: " + resource, e);
-        }
     }
 }

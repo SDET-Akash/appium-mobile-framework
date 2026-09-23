@@ -7,17 +7,20 @@
 
     <listeners>
         <listener class-name="com.automation.mobile.listeners.TestListener"/>
+        <listener class-name="com.automation.mobile.listeners.AnnotationTransformer"/>
     </listeners>
 
-
-    <test name="Driver Smoke Test">
+    <!-- DriverSmokeTest is intentionally excluded: its own class Javadoc
+         documents it as a temporary Driver Layer verification test,
+         meant to be removed once real tests existed on top of
+         BaseTest/BasePage. Those real tests (below) now cover that
+         ground, so it is no longer run. -->
+    <test name="Android UI Tests">
         <classes>
-            <class name="com.automation.mobile.tests.android.DriverSmokeTest"/>
-            <class name="com.automation.mobile.tests.android.LoginTest"/>
-            <class name="com.automation.mobile.tests.android.DashboardTest"/>
-            <class name="com.automation.mobile.tests.android.HomeTest"/>
-
-
+            <class name="com.automation.mobile.tests.android.ui.LoginTest"/>
+            <class name="com.automation.mobile.tests.android.ui.DashboardTest"/>
+            <class name="com.automation.mobile.tests.android.ui.HomeTest"/>
+            <class name="com.automation.mobile.tests.android.ui.LeadsTest"/>
         </classes>
     </test>
 

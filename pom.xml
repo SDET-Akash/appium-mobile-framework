@@ -29,7 +29,6 @@
         <log4j.version>2.24.3</log4j.version>
         <allure.version>2.29.1</allure.version>
         <aspectj.version>1.9.22.1</aspectj.version>
-        <extentreports.version>5.1.2</extentreports.version>
 
         <!-- Plugin versions -->
         <maven.compiler.plugin.version>3.13.0</maven.compiler.plugin.version>
@@ -151,14 +150,6 @@
             <groupId>org.aspectj</groupId>
             <artifactId>aspectjweaver</artifactId>
             <version>${aspectj.version}</version>
-        </dependency>
-
-        <!-- ExtentReports: standalone HTML execution report/dashboard,
-             used alongside Allure for a human-friendly local report. -->
-        <dependency>
-            <groupId>com.aventstack</groupId>
-            <artifactId>extentreports</artifactId>
-            <version>${extentreports.version}</version>
         </dependency>
 
     </dependencies>

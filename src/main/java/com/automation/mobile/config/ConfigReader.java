@@ -16,11 +16,6 @@ public class ConfigReader {
         this.properties = loadProperties(environment);
     }
 
-    public static Environment getEnvironment() {
-        String env = System.getProperty("env", "QA");
-        return Environment.valueOf(env.toUpperCase());
-    }
-
     public String get(String key) {
         String value = properties.getProperty(key);
 

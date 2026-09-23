@@ -1,4 +1,4 @@
-package com.automation.mobile.tests.android;
+package com.automation.mobile.tests.android.ui;
 
 import com.automation.mobile.base.AuthenticatedBaseTest;
 import com.automation.mobile.pages.android.HomePage;

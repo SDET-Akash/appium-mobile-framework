@@ -1,6 +1,6 @@
 package com.automation.mobile.flows;
 
-import com.automation.mobile.config.ConfigReader;
+import com.automation.mobile.config.EnvironmentManager;
 import com.automation.mobile.config.UserDataManager;
 import com.automation.mobile.pages.android.DashboardPage;
 import com.automation.mobile.pages.android.LoginPage;
@@ -18,7 +18,7 @@ public class LoginFlow {
     public LoginFlow(AndroidDriver driver) {
         this.driver = driver;
         this.userDataManager =
-                new UserDataManager(ConfigReader.getEnvironment());
+                new UserDataManager(EnvironmentManager.getEnvironment());
     }
 
     public DashboardPage loginAsValidUser() {
