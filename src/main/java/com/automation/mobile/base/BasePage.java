@@ -4,7 +4,9 @@ import io.appium.java_client.android.AndroidDriver;
 import io.appium.java_client.pagefactory.AppiumFieldDecorator;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.StaleElementReferenceException;
+import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.PageFactory;
 import org.openqa.selenium.support.ui.ExpectedConditions;
@@ -148,9 +150,14 @@ public class BasePage {
                     ExpectedConditions.visibilityOf(element)
             ).isDisplayed();
 
-        } catch (Exception e) {
+        } catch (TimeoutException
+                 | NoSuchElementException
+                 | StaleElementReferenceException e) {
 
-            LOGGER.debug("Element was not displayed");
+            LOGGER.debug(
+                    "Element was not displayed or was unavailable: {}",
+                    e.getClass().getSimpleName()
+            );
 
             return false;
         }
