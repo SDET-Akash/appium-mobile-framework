@@ -158,6 +158,23 @@
         <finalName>appium-mobile-framework</finalName>
         <plugins>
 
+            <!-- Cleans generated Allure results and reports -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-clean-plugin</artifactId>
+                <version>3.3.2</version>
+                <configuration>
+                    <filesets>
+                        <fileset>
+                            <directory>${project.basedir}/allure-results</directory>
+                        </fileset>
+                        <fileset>
+                            <directory>${project.basedir}/allure-report</directory>
+                        </fileset>
+                    </filesets>
+                </configuration>
+            </plugin>
+
             <!-- Compiles the project against Java 17. -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -167,6 +184,8 @@
                     <release>17</release>
                 </configuration>
             </plugin>
+
+
 
             <!-- Executes the TestNG suite and weaves AspectJ at runtime so
                  Allure step/attachment annotations are captured. -->

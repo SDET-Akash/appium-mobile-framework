@@ -7,6 +7,7 @@ import com.automation.mobile.config.EnvironmentManager;
 import com.automation.mobile.driver.AndroidDriverFactory;
 import com.automation.mobile.driver.DriverManager;
 import com.automation.mobile.exceptions.DriverInitializationException;
+import com.automation.mobile.reports.AllureManager;
 import com.automation.mobile.utils.StorageStateManager;
 import io.appium.java_client.android.AndroidDriver;
 import org.apache.logging.log4j.LogManager;
@@ -51,6 +52,11 @@ public class BaseTest {
      */
     @BeforeSuite(alwaysRun = true)
     public void refreshStorageState() {
+        Environment environment = EnvironmentManager.getEnvironment();
+        ConfigManager configManager = new ConfigManager(environment);
+
+        AllureManager.writeEnvironmentProperties(configManager);
+
         StorageStateRefresher.refresh();
     }
 
